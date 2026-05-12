@@ -12,14 +12,17 @@ func (m model) View() string {
 	screenW := max(20, m.width)
 	screenH := max(8, m.height)
 	header := renderLogo(ansiHeader(), screenW)
-	status := m.status
+	statusText := m.status
 	if m.dirty {
-		status += " *"
+		statusText += " *"
 	}
+	statusText = strings.ReplaceAll(statusText, "\n", " ")
+	statusText = minString(statusText, max(1, screenW))
+	status := ""
 	if m.err != "" {
-		status = m.styles.error.Render("! " + m.err)
+		status = m.styles.error.Inline(true).MaxWidth(screenW).Render("! " + strings.ReplaceAll(m.err, "\n", " "))
 	} else {
-		status = m.styles.status.Render(status)
+		status = m.styles.status.Inline(true).MaxWidth(screenW).Render(statusText)
 	}
 
 	var body string
@@ -32,8 +35,10 @@ func (m model) View() string {
 	} else {
 		body = m.writeView()
 	}
-	help := m.styles.help.Width(screenW).Render(m.helpText())
-	return m.styles.frame.Width(screenW).Height(screenH).Render(strings.Join([]string{header, status, body, help}, "\n"))
+	body = lipgloss.NewStyle().MaxWidth(screenW).MaxHeight(m.bodyHeight()).Render(body)
+	help := m.styles.help.Inline(true).MaxWidth(screenW).Render(m.helpText())
+	out := strings.Join([]string{header, status, body, help}, "\n")
+	return m.styles.frame.Width(screenW).Height(screenH).MaxWidth(screenW).MaxHeight(screenH).Render(out)
 }
 
 func (m model) writeView() string {
@@ -137,7 +142,7 @@ func (m model) helpText() string {
 
 func (m model) bodyHeight() int {
 	headerLines := len(strings.Split(renderLogo(ansiHeader(), max(20, m.width)), "\n"))
-	return max(3, m.height-headerLines-3)
+	return max(1, m.height-headerLines-2)
 }
 
 func (m model) panelWidths() (treeW, editorW, previewW int) {
@@ -156,6 +161,8 @@ func renderPanel(style lipgloss.Style, outerW, outerH int, content string) strin
 	return style.
 		Width(contentWidth(style, outerW)).
 		Height(contentHeight(style, outerH)).
+		MaxWidth(outerW).
+		MaxHeight(outerH).
 		Render(content)
 }
 

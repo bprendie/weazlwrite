@@ -44,6 +44,9 @@ func TestViewDoesNotExceedTerminalWidth(t *testing.T) {
 				t.Fatalf("%dx%d line %d width = %d, want <= %d: %q", size.width, size.height, i+1, got, size.width, line)
 			}
 		}
+		if got := lipgloss.Height(m.View()); got > size.height {
+			t.Fatalf("%dx%d height = %d, want <= %d", size.width, size.height, got, size.height)
+		}
 	}
 }
 
