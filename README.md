@@ -62,6 +62,7 @@ Useful environment overrides:
 - `ctrl+r`: rendered preview mode
 - `ctrl+o`: show or hide the file tree
 - `tab`: move between the file tree and the main writing surface
+- `space`: fold or unfold the selected tree folder
 - `ctrl+s`: save to the current target
 - `ctrl+v`: save to the encrypted vault
 - `ctrl+f`: save to a filesystem path
@@ -73,6 +74,8 @@ Useful environment overrides:
 ## Vault And Files
 
 The vault is encrypted SQLite, but it behaves like a note tree. Save something as `projects/specs/api.md`, and WeazlWrite shows it under `Vault / projects / specs / api.md`.
+
+The left rail has two roots: `Vault` for encrypted notes and `Files` for regular filesystem work. Folders fold and unfold with `space`, and the active note gets a tiny marker so you can tell where you are without the tree turning into a blinking holiday display. A `*` means the current buffer has unsaved changes.
 
 Press `ctrl+v` to save the current buffer into the encrypted vault. Press `ctrl+f` to save it out to the regular filesystem. Press `ctrl+s` when you simply want to save back to wherever the current note already lives.
 
