@@ -67,6 +67,7 @@ type model struct {
 	markdown     markdownRenderer
 	tree         []treeEntry
 	treeIdx      int
+	treeOffset   int
 	treeExpanded map[string]bool
 	cwd          string
 	filePath     string
@@ -355,6 +356,7 @@ func (m model) updateMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 				m.treeIdx++
 			}
 		}
+		m.ensureTreeSelectionVisible()
 		return m, nil
 	}
 	if target == focusEditor && m.view == viewEdit {
@@ -586,6 +588,7 @@ func (m model) updateTree(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "esc":
 		m.setMainFocus()
 	}
+	m.ensureTreeSelectionVisible()
 	return m, nil
 }
 
@@ -645,6 +648,7 @@ func (m *model) toggleSelectedDir() {
 	if entry.isDir {
 		m.toggleTreeEntry(entry)
 	}
+	m.ensureTreeSelectionVisible()
 }
 
 func (m *model) toggleTreeEntry(entry treeEntry) {
@@ -655,6 +659,7 @@ func (m *model) toggleTreeEntry(entry treeEntry) {
 	if err := m.renderTree(); err != nil {
 		m.err = err.Error()
 	}
+	m.ensureTreeSelectionVisible()
 }
 
 func (m *model) openDiskPath(path string) error {
@@ -844,6 +849,7 @@ func (m *model) selectTreeID(id string) {
 		for i, entry := range m.tree {
 			if entry.id == id {
 				m.treeIdx = i
+				m.ensureTreeSelectionVisible()
 				return
 			}
 		}
@@ -852,6 +858,7 @@ func (m *model) selectTreeID(id string) {
 		for i, entry := range m.tree {
 			if entry.id == current {
 				m.treeIdx = i
+				m.ensureTreeSelectionVisible()
 				return
 			}
 		}
@@ -859,6 +866,46 @@ func (m *model) selectTreeID(id string) {
 	if m.treeIdx >= len(m.tree) {
 		m.treeIdx = max(0, len(m.tree)-1)
 	}
+	m.ensureTreeSelectionVisible()
+}
+
+func (m *model) ensureTreeSelectionVisible() {
+	if len(m.tree) == 0 {
+		m.treeIdx = 0
+		m.treeOffset = 0
+		return
+	}
+	if m.treeIdx < 0 {
+		m.treeIdx = 0
+	}
+	if m.treeIdx >= len(m.tree) {
+		m.treeIdx = len(m.tree) - 1
+	}
+	height := m.treeContentHeight()
+	if height <= 0 {
+		height = 1
+	}
+	if m.treeIdx < m.treeOffset {
+		m.treeOffset = m.treeIdx
+	}
+	if m.treeIdx >= m.treeOffset+height {
+		m.treeOffset = m.treeIdx - height + 1
+	}
+	maxOffset := max(0, len(m.tree)-height)
+	if m.treeOffset > maxOffset {
+		m.treeOffset = maxOffset
+	}
+	if m.treeOffset < 0 {
+		m.treeOffset = 0
+	}
+}
+
+func (m model) treeContentHeight() int {
+	treeW, _ := m.layoutWidths()
+	if treeW <= 0 {
+		return 0
+	}
+	return contentHeight(m.styles.sidebar, m.bodyHeight())
 }
 
 func (m model) currentTreeID() string {

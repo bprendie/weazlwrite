@@ -94,6 +94,29 @@ func TestCtrlRSwitchesToRenderMode(t *testing.T) {
 	}
 }
 
+func TestTreeSelectionScrollsIntoView(t *testing.T) {
+	m := model{
+		styles:      newStyles(),
+		mode:        modeWrite,
+		focus:       focusTree,
+		view:        viewEdit,
+		treeVisible: true,
+		width:       80,
+		height:      12,
+	}
+	for i := 0; i < 30; i++ {
+		m.tree = append(m.tree, treeEntry{name: "note.md", id: "vault:note"})
+	}
+	m.treeIdx = 25
+	m.ensureTreeSelectionVisible()
+	if m.treeOffset == 0 {
+		t.Fatal("tree offset stayed at top for off-screen selection")
+	}
+	if m.treeIdx < m.treeOffset || m.treeIdx >= m.treeOffset+m.treeContentHeight() {
+		t.Fatalf("tree selection %d not visible in offset %d height %d", m.treeIdx, m.treeOffset, m.treeContentHeight())
+	}
+}
+
 func TestVaultTreeEntriesUseFilesystemStyleHierarchy(t *testing.T) {
 	entries := vaultTreeEntries([]string{
 		"projects/specs/api.md",

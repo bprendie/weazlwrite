@@ -133,10 +133,12 @@ func (m model) treeView(width, height int) string {
 		return m.styles.sidebarDim.Render("empty")
 	}
 	var b strings.Builder
-	for i, entry := range m.tree {
-		if i >= height {
+	start := min(max(0, m.treeOffset), max(0, len(m.tree)-1))
+	for row, i := 0, start; i < len(m.tree); row, i = row+1, i+1 {
+		if row >= height {
 			break
 		}
+		entry := m.tree[i]
 		name := m.treeEntryLabel(entry)
 		name = minString(name, max(1, width-2))
 		line := "  " + name
@@ -146,7 +148,7 @@ func (m model) treeView(width, height int) string {
 			line = m.styles.sidebarDim.Render(line)
 		}
 		b.WriteString(line)
-		if i != len(m.tree)-1 && i != height-1 {
+		if i != len(m.tree)-1 && row != height-1 {
 			b.WriteByte('\n')
 		}
 	}
