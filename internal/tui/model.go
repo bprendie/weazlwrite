@@ -67,6 +67,7 @@ type model struct {
 	markdown     markdownRenderer
 	tree         []treeEntry
 	treeIdx      int
+	treeExpanded map[string]bool
 	cwd          string
 	filePath     string
 	diskPath     string
@@ -134,9 +135,13 @@ func New(cfg config.Config, cfgPath string, store *storage.Store, openPath strin
 		editor:      ta,
 		preview:     viewport.New(0, 0),
 		markdown:    markdownRenderer{enabled: cfg.UI.MarkdownEnabled(), style: cfg.UI.MarkdownStyle},
-		cwd:         cwd,
-		filePath:    openPath,
-		status:      "private markdown vault",
+		treeExpanded: map[string]bool{
+			"vault:": true,
+			"file:":  true,
+		},
+		cwd:      cwd,
+		filePath: openPath,
+		status:   "private markdown vault",
 	}
 	return m
 }
@@ -512,6 +517,7 @@ func (m model) updateSaveFile(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		m.mode = modeWrite
 		m.setMainFocus()
+		m.renderTree()
 		return m, nil
 	case "esc":
 		m.mode = modeWrite
@@ -575,6 +581,8 @@ func (m model) updateTree(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "enter":
 		m.openSelected()
+	case " ":
+		m.toggleSelectedDir()
 	case "esc":
 		m.setMainFocus()
 	}
@@ -599,6 +607,7 @@ func (m *model) newVaultNote() {
 	m.vaultPath = name
 	m.diskPath = ""
 	m.isVault = true
+	m.expandTreeTo("vault:" + name)
 	m.editor.SetValue("# Untitled\n\n")
 	m.dirty = true
 	m.status = "new vault note " + name
@@ -611,9 +620,8 @@ func (m *model) openSelected() {
 		return
 	}
 	entry := m.tree[m.treeIdx]
-	if entry.isDir && !entry.vault {
-		m.cwd = entry.path
-		m.renderTree()
+	if entry.isDir {
+		m.toggleTreeEntry(entry)
 		return
 	}
 	if entry.vault && !entry.isDir {
@@ -626,6 +634,26 @@ func (m *model) openSelected() {
 		if err := m.openDiskPath(entry.path); err != nil {
 			m.err = err.Error()
 		}
+	}
+}
+
+func (m *model) toggleSelectedDir() {
+	if len(m.tree) == 0 || m.treeIdx >= len(m.tree) {
+		return
+	}
+	entry := m.tree[m.treeIdx]
+	if entry.isDir {
+		m.toggleTreeEntry(entry)
+	}
+}
+
+func (m *model) toggleTreeEntry(entry treeEntry) {
+	if entry.id == "" {
+		return
+	}
+	m.treeExpanded[entry.id] = !m.treeExpanded[entry.id]
+	if err := m.renderTree(); err != nil {
+		m.err = err.Error()
 	}
 }
 
@@ -654,6 +682,7 @@ func (m *model) openDiskPath(path string) error {
 	m.cwd = filepath.Dir(abs)
 	m.isVault = false
 	m.vaultID = ""
+	m.expandTreeTo("file:" + abs)
 	m.editor.SetValue(string(b))
 	m.dirty = false
 	m.status = "editing " + abs
@@ -679,6 +708,7 @@ func (m *model) openVaultPath(path string) error {
 	m.diskPath = ""
 	m.vaultID = note.ID
 	m.isVault = true
+	m.expandTreeTo("vault:" + note.Path)
 	m.editor.SetValue(content)
 	m.dirty = false
 	m.status = "editing vault:" + note.Path
@@ -728,6 +758,7 @@ func (m *model) saveToVaultPath(path string) error {
 	m.vaultPath = path
 	m.filePath = path
 	m.isVault = true
+	m.expandTreeTo("vault:" + path)
 	m.status = "saved vault:" + path
 	m.dirty = false
 	m.err = ""
@@ -749,6 +780,7 @@ func (m *model) saveToDiskPath(path string) error {
 	m.diskPath = abs
 	m.isVault = false
 	m.cwd = filepath.Dir(abs)
+	m.expandTreeTo("file:" + abs)
 	m.status = "saved " + abs
 	m.dirty = false
 	m.err = ""
@@ -773,6 +805,14 @@ func defaultVaultPath(diskPath, cwd, content string) string {
 }
 
 func (m *model) renderTree() error {
+	m.ensureTreeExpanded()
+	selectedID := ""
+	if len(m.tree) > 0 && m.treeIdx < len(m.tree) {
+		selectedID = m.tree[m.treeIdx].id
+	}
+	if selectedID == "" {
+		selectedID = m.currentTreeID()
+	}
 	notes, err := m.store.ListNotes()
 	if err != nil {
 		return err
@@ -781,12 +821,81 @@ func (m *model) renderTree() error {
 	for _, note := range notes {
 		vaultNotes = append(vaultNotes, note.Path)
 	}
-	tree, err := readTree(m.cwd, m.cfg.Vault.Root, vaultNotes)
+	tree, err := readTree(m.cwd, vaultNotes, m.treeExpanded)
 	m.tree = tree
+	m.selectTreeID(selectedID)
+	return err
+}
+
+func (m *model) ensureTreeExpanded() {
+	if m.treeExpanded == nil {
+		m.treeExpanded = map[string]bool{}
+	}
+	if _, ok := m.treeExpanded["vault:"]; !ok {
+		m.treeExpanded["vault:"] = true
+	}
+	if _, ok := m.treeExpanded["file:"]; !ok {
+		m.treeExpanded["file:"] = true
+	}
+}
+
+func (m *model) selectTreeID(id string) {
+	if id != "" {
+		for i, entry := range m.tree {
+			if entry.id == id {
+				m.treeIdx = i
+				return
+			}
+		}
+	}
+	if current := m.currentTreeID(); current != "" {
+		for i, entry := range m.tree {
+			if entry.id == current {
+				m.treeIdx = i
+				return
+			}
+		}
+	}
 	if m.treeIdx >= len(m.tree) {
 		m.treeIdx = max(0, len(m.tree)-1)
 	}
-	return err
+}
+
+func (m model) currentTreeID() string {
+	if m.isVault && m.vaultPath != "" {
+		return "vault:" + cleanVaultPath(m.vaultPath)
+	}
+	if !m.isVault && m.diskPath != "" {
+		return "file:" + m.diskPath
+	}
+	return ""
+}
+
+func (m *model) expandTreeTo(id string) {
+	m.ensureTreeExpanded()
+	switch {
+	case id == "vault:" || strings.HasPrefix(id, "vault:"):
+		m.treeExpanded["vault:"] = true
+		path := strings.TrimPrefix(id, "vault:")
+		parts := strings.Split(cleanVaultPath(path), "/")
+		var prefix []string
+		for i := 0; i < len(parts)-1; i++ {
+			prefix = append(prefix, parts[i])
+			m.treeExpanded["vault:"+strings.Join(prefix, "/")] = true
+		}
+	case id == "file:" || strings.HasPrefix(id, "file:"):
+		m.treeExpanded["file:"] = true
+		path := strings.TrimPrefix(id, "file:")
+		dir := filepath.Dir(path)
+		for dir != "." && dir != string(filepath.Separator) && strings.HasPrefix(dir, m.cwd) {
+			m.treeExpanded["file:"+dir] = true
+			parent := filepath.Dir(dir)
+			if parent == dir {
+				break
+			}
+			dir = parent
+		}
+	}
 }
 
 func (m *model) renderPreview() {

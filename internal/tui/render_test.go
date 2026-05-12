@@ -31,9 +31,14 @@ func TestViewDoesNotExceedTerminalWidth(t *testing.T) {
 			editor:  editor,
 			preview: viewport.New(0, 0),
 			status:  "editing test.md",
+			treeExpanded: map[string]bool{
+				"vault:": true,
+				"file:":  true,
+			},
 			tree: []treeEntry{
-				{name: "Vault", isDir: true, vault: true},
-				{name: "test.md", path: "test.md"},
+				{name: "Vault", id: "vault:", isDir: true, vault: true},
+				{name: "Files", id: "file:", isDir: true},
+				{name: "test.md", id: "file:test.md", path: "test.md", depth: 1},
 			},
 		}
 		m.resize()
@@ -94,17 +99,21 @@ func TestVaultTreeEntriesUseFilesystemStyleHierarchy(t *testing.T) {
 		"projects/specs/api.md",
 		"projects/readme.md",
 		"daily.md",
+	}, map[string]bool{
+		"vault:":               true,
+		"vault:projects":       true,
+		"vault:projects/specs": true,
 	})
 	got := make([]string, 0, len(entries))
 	for _, entry := range entries {
-		got = append(got, strings.Repeat("  ", entry.depth)+entry.name)
+		got = append(got, entry.id+" "+strings.Repeat("  ", entry.depth)+entry.name)
 	}
 	want := []string{
-		"  daily.md",
-		"  projects/",
-		"    readme.md",
-		"    specs/",
-		"      api.md",
+		"vault:daily.md   daily.md",
+		"vault:projects   projects/",
+		"vault:projects/readme.md     readme.md",
+		"vault:projects/specs     specs/",
+		"vault:projects/specs/api.md       api.md",
 	}
 	if strings.Join(got, "\n") != strings.Join(want, "\n") {
 		t.Fatalf("vault tree:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))

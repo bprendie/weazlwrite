@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -138,24 +137,13 @@ func (m model) treeView(width, height int) string {
 		if i >= height {
 			break
 		}
-		name := entry.name
-		if entry.vault && entry.name != "Vault" {
-			name = strings.Repeat("  ", entry.depth) + entry.name
-		}
-		if !entry.vault && entry.isDir && entry.path == m.cwd {
-			name = filepath.Base(entry.path) + "/"
-			if name == "./" || name == "/" {
-				name = entry.path
-			}
-		}
-		name = minString(name, max(1, width))
-		line := name
+		name := m.treeEntryLabel(entry)
+		name = minString(name, max(1, width-2))
+		line := "  " + name
 		if i == m.treeIdx {
-			line = m.styles.sidebarSel.Render("> " + minString(name, max(1, width-2)))
+			line = m.styles.sidebarSel.Render("> " + name)
 		} else if entry.isDir {
-			line = m.styles.sidebarDim.Render("  " + minString(name, max(1, width-2)))
-		} else {
-			line = "  " + minString(name, max(1, width-2))
+			line = m.styles.sidebarDim.Render(line)
 		}
 		b.WriteString(line)
 		if i != len(m.tree)-1 && i != height-1 {
@@ -163,6 +151,26 @@ func (m model) treeView(width, height int) string {
 		}
 	}
 	return b.String()
+}
+
+func (m model) treeEntryLabel(entry treeEntry) string {
+	indent := strings.Repeat("  ", entry.depth)
+	current := entry.id == m.currentTreeID()
+	marker := " "
+	if current {
+		marker = "•"
+		if m.dirty {
+			marker = "*"
+		}
+	}
+	if entry.isDir {
+		icon := "▸"
+		if m.treeExpanded[entry.id] {
+			icon = "▾"
+		}
+		return indent + icon + " " + entry.name
+	}
+	return indent + marker + " " + entry.name
 }
 
 func (m model) helpText() string {
@@ -193,7 +201,7 @@ func (m model) helpText() string {
 	if !m.treeVisible {
 		tree = "tree:off"
 	}
-	return mode + " " + tree + " | ^E edit | ^R render | ^O tree | ^S " + target + " | ^V save to vault | ^F save to file | ^P AI | ^C"
+	return mode + " " + tree + " | space fold | ^E edit | ^R render | ^O tree | ^S " + target + " | ^V vault | ^F file | ^P AI | ^C"
 }
 
 func (m model) bodyHeight() int {
