@@ -1,4 +1,19 @@
 {
+  "active_provider": "local-vllm",
+  "providers": {
+    "local-vllm": {
+      "type": "vllm",
+      "server_url": "http://localhost:8000",
+      "model": "local-model",
+      "context_window": 32768
+    },
+    "local-ollama": {
+      "type": "ollama",
+      "server_url": "http://localhost:11434",
+      "model": "llama3.1",
+      "context_window": 32768
+    }
+  },
   "database": {
     "path": "/home/you/.local/share/weazlwrite/weazlwrite.sqlite3"
   },

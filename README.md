@@ -7,6 +7,7 @@ Terminal Markdown writing for the Weazl app suite.
 - password-gated local SQLite vault storage
 - encrypted vault notes using bcrypt-derived unlock flow and AES-GCM content storage
 - live Markdown preview rendered with Glamour
+- AI block insertion through local Ollama or vLLM providers
 - local directory access for opening and saving `.md`, `.markdown`, and `.txt` files
 - direct terminal opening with `weazlwrite ./somefile.md`
 
@@ -33,6 +34,7 @@ Useful environment overrides:
 ## Keys
 
 - `ctrl+s` save
+- `ctrl+i` prompt the local AI model to insert a Markdown block at the cursor
 - `ctrl+n` new vault note
 - `ctrl+o` focus file tree
 - `ctrl+e` focus editor

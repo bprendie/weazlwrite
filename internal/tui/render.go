@@ -23,6 +23,10 @@ func (m model) View() string {
 	var body string
 	if m.mode == modeVault {
 		body = m.styles.panel.Width(max(20, m.width-6)).Render("Encrypted markdown vault\n\n" + m.password.View())
+	} else if m.mode == modeAI {
+		body = m.aiPromptView()
+	} else if m.mode == modeGenerating {
+		body = m.generatingView()
 	} else {
 		body = m.writeView()
 	}
@@ -55,6 +59,32 @@ func (m model) writeView() string {
 	editor := editorStyle.Width(editorW).Height(innerH).Render(m.editor.View())
 	preview := previewStyle.Width(previewW).Height(innerH).Render(m.preview.View())
 	return lipgloss.JoinHorizontal(lipgloss.Top, tree, editor, preview)
+}
+
+func (m model) aiPromptView() string {
+	w := max(20, m.width-6)
+	popupWidth := min(76, max(30, w-4))
+	copy := "AI insert prompt\n\n" + m.aiPrompt.View() + "\n\n" + m.styles.help.Render("The generated Markdown block will be inserted at the editor cursor.")
+	return lipgloss.PlaceHorizontal(w, lipgloss.Center, lipgloss.NewStyle().
+		Width(popupWidth).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(neonCyan).
+		Background(panel).
+		Padding(1, 2).
+		Render(copy))
+}
+
+func (m model) generatingView() string {
+	w := max(20, m.width-6)
+	popupWidth := min(60, max(30, w-4))
+	copy := "AI is generating a Markdown block..."
+	return lipgloss.PlaceHorizontal(w, lipgloss.Center, lipgloss.NewStyle().
+		Width(popupWidth).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(neonViolet).
+		Background(panel).
+		Padding(1, 2).
+		Render(copy))
 }
 
 func (m model) treeView(width, height int) string {
@@ -94,9 +124,15 @@ func (m model) helpText() string {
 	if m.mode == modeVault {
 		return "enter unlock/create | ctrl+c quit"
 	}
+	if m.mode == modeAI {
+		return "enter generate | esc cancel | ctrl+c quit"
+	}
+	if m.mode == modeGenerating {
+		return "waiting for local model | ctrl+c quit"
+	}
 	target := "vault"
 	if !m.isVault && m.filePath != "" {
 		target = fmt.Sprintf("disk:%s", m.filePath)
 	}
-	return "ctrl+s save " + target + " | ctrl+n new vault note | ctrl+o files | ctrl+e editor | ctrl+p preview | pgup/pgdn scroll preview | ctrl+c quit"
+	return "ctrl+s save " + target + " | ctrl+i ai insert | ctrl+n new vault note | ctrl+o files | ctrl+e editor | ctrl+p preview | pgup/pgdn scroll preview | ctrl+c quit"
 }

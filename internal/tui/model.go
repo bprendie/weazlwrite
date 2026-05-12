@@ -1,10 +1,12 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -13,6 +15,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/bprendie/weazlwrite/internal/config"
+	"github.com/bprendie/weazlwrite/internal/llm"
 	"github.com/bprendie/weazlwrite/internal/storage"
 )
 
@@ -21,6 +24,8 @@ type mode int
 const (
 	modeVault mode = iota
 	modeWrite
+	modeAI
+	modeGenerating
 )
 
 type focus int
@@ -41,6 +46,7 @@ type model struct {
 	width    int
 	height   int
 	password textinput.Model
+	aiPrompt textinput.Model
 	editor   textarea.Model
 	preview  viewport.Model
 	markdown markdownRenderer
@@ -51,8 +57,14 @@ type model struct {
 	vaultID  string
 	isVault  bool
 	dirty    bool
+	aiBusy   bool
 	err      string
 	status   string
+}
+
+type aiResultMsg struct {
+	block string
+	err   error
 }
 
 func New(cfg config.Config, cfgPath string, store *storage.Store, openPath string) tea.Model {
@@ -61,6 +73,10 @@ func New(cfg config.Config, cfgPath string, store *storage.Store, openPath strin
 	ti.EchoMode = textinput.EchoPassword
 	ti.Focus()
 	ti.CharLimit = 4096
+
+	ai := textinput.New()
+	ai.Placeholder = "insert a basic python loop function"
+	ai.CharLimit = 4096
 
 	ta := textarea.New()
 	ta.Placeholder = "# Untitled\n\nStart writing..."
@@ -77,6 +93,7 @@ func New(cfg config.Config, cfgPath string, store *storage.Store, openPath strin
 		mode:     modeVault,
 		focus:    focusEditor,
 		password: ti,
+		aiPrompt: ai,
 		editor:   ta,
 		preview:  viewport.New(0, 0),
 		markdown: markdownRenderer{enabled: cfg.UI.MarkdownEnabled(), style: cfg.UI.MarkdownStyle},
@@ -121,7 +138,35 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.mode == modeVault {
 			return m.updateVault(msg)
 		}
+		if m.mode == modeAI {
+			return m.updateAI(msg)
+		}
+		if m.mode == modeGenerating {
+			return m, nil
+		}
 		return m.updateWrite(msg)
+	case aiResultMsg:
+		m.aiBusy = false
+		m.mode = modeWrite
+		m.focus = focusEditor
+		m.editor.Focus()
+		if msg.err != nil {
+			m.err = msg.err.Error()
+			m.status = "ai insert failed"
+			return m, nil
+		}
+		block := strings.TrimSpace(msg.block)
+		if block == "" {
+			m.err = "ai returned an empty block"
+			m.status = "ai insert failed"
+			return m, nil
+		}
+		m.editor.InsertString("\n\n" + block + "\n\n")
+		m.dirty = true
+		m.err = ""
+		m.status = "inserted ai block"
+		m.renderPreview()
+		return m, nil
 	}
 	return m, nil
 }
@@ -172,6 +217,13 @@ func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "ctrl+n":
 		m.newVaultNote()
 		return m, nil
+	case "ctrl+i":
+		m.mode = modeAI
+		m.aiPrompt.SetValue("")
+		m.aiPrompt.Focus()
+		m.editor.Blur()
+		m.status = "ai intelligence prompt"
+		return m, textinput.Blink
 	case "ctrl+o":
 		m.focus = focusTree
 		m.editor.Blur()
@@ -226,6 +278,42 @@ func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.preview, cmd = m.preview.Update(msg)
 	return m, cmd
+}
+
+func (m model) updateAI(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		instruction := strings.TrimSpace(m.aiPrompt.Value())
+		if instruction == "" {
+			m.err = "ai prompt is required"
+			return m, nil
+		}
+		m.mode = modeGenerating
+		m.aiBusy = true
+		m.err = ""
+		m.status = "ai generating block"
+		return m, m.generateAIBlock(instruction, m.editor.Value())
+	case "esc":
+		m.mode = modeWrite
+		m.focus = focusEditor
+		m.editor.Focus()
+		m.status = "ai insert cancelled"
+		return m, nil
+	default:
+		var cmd tea.Cmd
+		m.aiPrompt, cmd = m.aiPrompt.Update(msg)
+		return m, cmd
+	}
+}
+
+func (m model) generateAIBlock(instruction, document string) tea.Cmd {
+	provider := m.cfg.Active()
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		block, err := llm.New(provider).GenerateBlock(ctx, document, instruction)
+		return aiResultMsg{block: block, err: err}
+	}
 }
 
 func (m model) updateTree(msg tea.KeyMsg) (tea.Model, tea.Cmd) {

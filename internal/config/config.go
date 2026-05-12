@@ -10,9 +10,19 @@ import (
 const appName = "weazlwrite"
 
 type Config struct {
-	Database Database `json:"database"`
-	Vault    Vault    `json:"vault"`
-	UI       UI       `json:"ui"`
+	ActiveProvider string              `json:"active_provider"`
+	Providers      map[string]Provider `json:"providers"`
+	Database       Database            `json:"database"`
+	Vault          Vault               `json:"vault"`
+	UI             UI                  `json:"ui"`
+}
+
+type Provider struct {
+	Type          string `json:"type"`
+	ServerURL     string `json:"server_url"`
+	Model         string `json:"model"`
+	APIKey        string `json:"api_key,omitempty"`
+	ContextWindow int    `json:"context_window,omitempty"`
 }
 
 type Database struct {
@@ -81,6 +91,21 @@ func Save(path string, cfg Config) error {
 func Default() Config {
 	dataDir := dataDir()
 	return Config{
+		ActiveProvider: "local-vllm",
+		Providers: map[string]Provider{
+			"local-vllm": {
+				Type:          "vllm",
+				ServerURL:     "http://localhost:8000",
+				Model:         "local-model",
+				ContextWindow: 32768,
+			},
+			"local-ollama": {
+				Type:          "ollama",
+				ServerURL:     "http://localhost:11434",
+				Model:         "llama3.1",
+				ContextWindow: 32768,
+			},
+		},
 		Database: Database{Path: filepath.Join(dataDir, "weazlwrite.sqlite3")},
 		Vault:    Vault{Root: filepath.Join(dataDir, "vault")},
 		UI: UI{
@@ -92,6 +117,18 @@ func Default() Config {
 
 func (c *Config) withDefaults() {
 	def := Default()
+	if c.ActiveProvider == "" {
+		c.ActiveProvider = def.ActiveProvider
+	}
+	if c.Providers == nil || len(c.Providers) == 0 {
+		c.Providers = def.Providers
+	}
+	for name, provider := range c.Providers {
+		if provider.ContextWindow <= 0 {
+			provider.ContextWindow = 32768
+			c.Providers[name] = provider
+		}
+	}
 	if c.Database.Path == "" {
 		c.Database.Path = def.Database.Path
 	}
@@ -104,6 +141,17 @@ func (c *Config) withDefaults() {
 	if c.UI.MarkdownStyle == "" {
 		c.UI.MarkdownStyle = def.UI.MarkdownStyle
 	}
+}
+
+func (c *Config) Active() Provider {
+	if c.Providers == nil {
+		c.Providers = map[string]Provider{}
+	}
+	p, ok := c.Providers[c.ActiveProvider]
+	if !ok {
+		return Provider{}
+	}
+	return p
 }
 
 func (ui UI) MarkdownEnabled() bool {
