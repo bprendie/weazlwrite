@@ -499,15 +499,15 @@ func (m *model) renderPreview() {
 }
 
 func (m *model) resize() {
-	innerW := max(20, m.width-6)
-	innerH := max(8, m.height-10)
-	treeW := min(30, max(20, innerW/4))
-	workW := max(20, innerW-treeW-2)
-	editorW := max(20, workW/2)
-	previewW := max(20, workW-editorW-1)
-	m.editor.SetWidth(editorW - 2)
-	m.editor.SetHeight(innerH - 2)
-	m.preview.Width = previewW - 2
-	m.preview.Height = innerH - 2
+	innerW := max(20, m.width)
+	innerH := m.bodyHeight()
+	treeW := min(30, max(18, innerW/4))
+	workW := max(20, innerW-treeW)
+	editorW := max(10, workW/2)
+	previewW := max(10, innerW-treeW-editorW)
+	m.editor.SetWidth(contentWidth(m.styles.panel, editorW))
+	m.editor.SetHeight(contentHeight(m.styles.panel, innerH))
+	m.preview.Width = contentWidth(m.styles.panel, previewW)
+	m.preview.Height = contentHeight(m.styles.panel, innerH)
 	m.markdown.Resize(m.preview.Width)
 }

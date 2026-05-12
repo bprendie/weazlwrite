@@ -9,7 +9,9 @@ import (
 )
 
 func (m model) View() string {
-	header := renderLogo(ansiHeader(), max(20, m.width-6))
+	screenW := max(20, m.width)
+	screenH := max(8, m.height)
+	header := renderLogo(ansiHeader(), screenW)
 	status := m.status
 	if m.dirty {
 		status += " *"
@@ -22,7 +24,7 @@ func (m model) View() string {
 
 	var body string
 	if m.mode == modeVault {
-		body = m.styles.panel.Width(max(20, m.width-6)).Render("Encrypted markdown vault\n\n" + m.password.View())
+		body = renderPanel(m.styles.panel, screenW, m.bodyHeight(), "Encrypted markdown vault\n\n"+m.password.View())
 	} else if m.mode == modeAI {
 		body = m.aiPromptView()
 	} else if m.mode == modeGenerating {
@@ -30,17 +32,17 @@ func (m model) View() string {
 	} else {
 		body = m.writeView()
 	}
-	help := m.styles.help.Render(m.helpText())
-	return m.styles.frame.Width(m.width).Height(m.height).Render(strings.Join([]string{header, status, body, help}, "\n"))
+	help := m.styles.help.Width(screenW).Render(m.helpText())
+	return m.styles.frame.Width(screenW).Height(screenH).Render(strings.Join([]string{header, status, body, help}, "\n"))
 }
 
 func (m model) writeView() string {
-	innerW := max(20, m.width-6)
-	innerH := max(8, m.height-10)
-	treeW := min(30, max(20, innerW/4))
-	workW := max(20, innerW-treeW-2)
-	editorW := max(20, workW/2)
-	previewW := max(20, workW-editorW-1)
+	innerW := max(20, m.width)
+	innerH := m.bodyHeight()
+	treeW := min(30, max(18, innerW/4))
+	workW := max(20, innerW-treeW)
+	editorW := max(10, workW/2)
+	previewW := max(10, innerW-treeW-editorW)
 
 	treeStyle := m.styles.sidebar
 	editorStyle := m.styles.panel
@@ -55,35 +57,35 @@ func (m model) writeView() string {
 		previewStyle = m.styles.activePanel
 	}
 
-	tree := treeStyle.Width(treeW).Height(innerH).Render(m.treeView(treeW-2, innerH-2))
-	editor := editorStyle.Width(editorW).Height(innerH).Render(m.editor.View())
-	preview := previewStyle.Width(previewW).Height(innerH).Render(m.preview.View())
+	tree := renderPanel(treeStyle, treeW, innerH, m.treeView(contentWidth(treeStyle, treeW), contentHeight(treeStyle, innerH)))
+	editor := renderPanel(editorStyle, editorW, innerH, m.editor.View())
+	preview := renderPanel(previewStyle, previewW, innerH, m.preview.View())
 	return lipgloss.JoinHorizontal(lipgloss.Top, tree, editor, preview)
 }
 
 func (m model) aiPromptView() string {
-	w := max(20, m.width-6)
+	w := max(20, m.width)
 	popupWidth := min(76, max(30, w-4))
 	copy := "AI insert prompt\n\n" + m.aiPrompt.View() + "\n\n" + m.styles.help.Render("The generated Markdown block will be inserted at the editor cursor.")
 	return lipgloss.PlaceHorizontal(w, lipgloss.Center, lipgloss.NewStyle().
-		Width(popupWidth).
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(neonCyan).
 		Background(panel).
 		Padding(1, 2).
+		Width(max(1, popupWidth-6)).
 		Render(copy))
 }
 
 func (m model) generatingView() string {
-	w := max(20, m.width-6)
+	w := max(20, m.width)
 	popupWidth := min(60, max(30, w-4))
 	copy := "AI is generating a Markdown block..."
 	return lipgloss.PlaceHorizontal(w, lipgloss.Center, lipgloss.NewStyle().
-		Width(popupWidth).
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(neonViolet).
 		Background(panel).
 		Padding(1, 2).
+		Width(max(1, popupWidth-6)).
 		Render(copy))
 }
 
@@ -135,4 +137,24 @@ func (m model) helpText() string {
 		target = fmt.Sprintf("disk:%s", m.filePath)
 	}
 	return "ctrl+s save " + target + " | ctrl+i ai insert | ctrl+n new vault note | ctrl+o files | ctrl+e editor | ctrl+p preview | pgup/pgdn scroll preview | ctrl+c quit"
+}
+
+func (m model) bodyHeight() int {
+	headerLines := len(strings.Split(renderLogo(ansiHeader(), max(20, m.width)), "\n"))
+	return max(3, m.height-headerLines-3)
+}
+
+func renderPanel(style lipgloss.Style, outerW, outerH int, content string) string {
+	return style.
+		Width(contentWidth(style, outerW)).
+		Height(contentHeight(style, outerH)).
+		Render(content)
+}
+
+func contentWidth(style lipgloss.Style, outerW int) int {
+	return max(1, outerW-style.GetHorizontalFrameSize())
+}
+
+func contentHeight(style lipgloss.Style, outerH int) int {
+	return max(1, outerH-style.GetVerticalFrameSize())
 }

@@ -35,8 +35,7 @@ func newStyles() styles {
 	return styles{
 		frame: lipgloss.NewStyle().
 			Foreground(ink).
-			Background(void).
-			Padding(1, 2),
+			Background(void),
 		header: lipgloss.NewStyle().
 			Foreground(neonPink).
 			Bold(true),

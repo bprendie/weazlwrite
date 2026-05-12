@@ -7,21 +7,25 @@ import (
 )
 
 func ansiHeader() string {
-	return ` __      __          _______________.__  __      __        .__  __ ________
-/  \    /  \ ____   /  |  \____    /|  |/  \    /  \_______|__|/  |\_____  \
-\   \/\/   // __ \ /   |  |_/     / |  |\   \/\/   /\_  __ \  \   __\_(__  <
+	return ` __      __          _______________.__  __      __        .__  __ ________  
+/  \    /  \ ____   /  |  \____    /|  |/  \    /  \_______|__|/  |\_____  \ 
+\   \/\/   // __ \ /   |  |_/     / |  |\   \/\/   /\_  __ \  \   __\_(__  < 
  \        /\  ___//    ^   /     /_ |  |_\        /  |  | \/  ||  | /       \
   \__/\  /  \___  >____   /_______ \|____/\__/\  /   |__|  |__||__|/______  /
-       \/       \/     |__|       \/           \/                         \/`
+       \/       \/     |__|       \/           \/                         \/ `
 }
 
 func renderLogo(logo string, width int) string {
 	lines := strings.Split(logo, "\n")
-	if width < 86 {
-		return lipgloss.NewStyle().Foreground(neonPink).Bold(true).Render("W34Zl Wr1T3")
+	logoWidth := 0
+	for _, line := range lines {
+		logoWidth = max(logoWidth, lipgloss.Width(line))
+	}
+	if width < logoWidth {
+		return lipgloss.NewStyle().Foreground(neonPink).Bold(true).Render("weazlwrite")
 	}
 	for i, line := range lines {
-		if len(line) > width {
+		if lipgloss.Width(line) > width {
 			lines[i] = line[:width]
 		}
 	}
