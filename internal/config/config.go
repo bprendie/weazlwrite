@@ -106,7 +106,7 @@ func Default() Config {
 				ContextWindow: 32768,
 			},
 		},
-		Database: Database{Path: filepath.Join(dataDir, "weazlwrite.sqlite3")},
+		Database: Database{Path: filepath.Join(dataDir, "vault", "weazlwrite.sqlite3")},
 		Vault:    Vault{Root: filepath.Join(dataDir, "vault")},
 		UI: UI{
 			RenderMarkdown: boolPtr(true),
@@ -133,6 +133,13 @@ func (c *Config) withDefaults() {
 		c.Database.Path = def.Database.Path
 	}
 	if c.Vault.Root == "" {
+		c.Vault.Root = def.Vault.Root
+	}
+	legacy := legacyDefault()
+	if c.Database.Path == legacy.Database.Path {
+		c.Database.Path = def.Database.Path
+	}
+	if c.Vault.Root == legacy.Vault.Root {
 		c.Vault.Root = def.Vault.Root
 	}
 	if c.UI.RenderMarkdown == nil {
@@ -177,9 +184,15 @@ func dataDir() string {
 	if p := os.Getenv("WEAZLWRITE_DATA"); p != "" {
 		return p
 	}
-	if xdg := os.Getenv("XDG_DATA_HOME"); xdg != "" {
-		return filepath.Join(xdg, appName)
-	}
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".local", "share", appName)
+	return filepath.Join(home, "."+appName)
+}
+
+func legacyDefault() Config {
+	home, _ := os.UserHomeDir()
+	dataDir := filepath.Join(home, ".local", "share", appName)
+	return Config{
+		Database: Database{Path: filepath.Join(dataDir, "weazlwrite.sqlite3")},
+		Vault:    Vault{Root: filepath.Join(dataDir, "vault")},
+	}
 }

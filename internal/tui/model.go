@@ -26,6 +26,8 @@ const (
 	modeWrite
 	modeAI
 	modeGenerating
+	modeSaveFile
+	modeSaveVault
 )
 
 type focus int
@@ -36,30 +38,43 @@ const (
 	focusPreview
 )
 
+type viewMode int
+
+const (
+	viewEdit viewMode = iota
+	viewRender
+)
+
 type model struct {
-	cfg      config.Config
-	cfgPath  string
-	store    *storage.Store
-	styles   styles
-	mode     mode
-	focus    focus
-	width    int
-	height   int
-	password textinput.Model
-	aiPrompt textinput.Model
-	editor   textarea.Model
-	preview  viewport.Model
-	markdown markdownRenderer
-	tree     []treeEntry
-	treeIdx  int
-	cwd      string
-	filePath string
-	vaultID  string
-	isVault  bool
-	dirty    bool
-	aiBusy   bool
-	err      string
-	status   string
+	cfg         config.Config
+	cfgPath     string
+	store       *storage.Store
+	styles      styles
+	mode        mode
+	focus       focus
+	view        viewMode
+	treeVisible bool
+	width       int
+	height      int
+	password    textinput.Model
+	aiPrompt    textinput.Model
+	filePrompt  textinput.Model
+	vaultPrompt textinput.Model
+	editor      textarea.Model
+	preview     viewport.Model
+	markdown    markdownRenderer
+	tree        []treeEntry
+	treeIdx     int
+	cwd         string
+	filePath    string
+	diskPath    string
+	vaultPath   string
+	vaultID     string
+	isVault     bool
+	dirty       bool
+	aiBusy      bool
+	err         string
+	status      string
 }
 
 type aiResultMsg struct {
@@ -78,6 +93,14 @@ func New(cfg config.Config, cfgPath string, store *storage.Store, openPath strin
 	ai.Placeholder = "insert a basic python loop function"
 	ai.CharLimit = 4096
 
+	filePrompt := textinput.New()
+	filePrompt.Placeholder = "./notes/document.md"
+	filePrompt.CharLimit = 4096
+
+	vaultPrompt := textinput.New()
+	vaultPrompt.Placeholder = "projects/specs/document.md"
+	vaultPrompt.CharLimit = 4096
+
 	ta := textarea.New()
 	ta.Placeholder = "# Untitled\n\nStart writing..."
 	ta.ShowLineNumbers = true
@@ -86,20 +109,24 @@ func New(cfg config.Config, cfgPath string, store *storage.Store, openPath strin
 
 	cwd, _ := os.Getwd()
 	m := model{
-		cfg:      cfg,
-		cfgPath:  cfgPath,
-		store:    store,
-		styles:   newStyles(),
-		mode:     modeVault,
-		focus:    focusEditor,
-		password: ti,
-		aiPrompt: ai,
-		editor:   ta,
-		preview:  viewport.New(0, 0),
-		markdown: markdownRenderer{enabled: cfg.UI.MarkdownEnabled(), style: cfg.UI.MarkdownStyle},
-		cwd:      cwd,
-		filePath: openPath,
-		status:   "private markdown vault",
+		cfg:         cfg,
+		cfgPath:     cfgPath,
+		store:       store,
+		styles:      newStyles(),
+		mode:        modeVault,
+		focus:       focusEditor,
+		view:        viewEdit,
+		treeVisible: true,
+		password:    ti,
+		aiPrompt:    ai,
+		filePrompt:  filePrompt,
+		vaultPrompt: vaultPrompt,
+		editor:      ta,
+		preview:     viewport.New(0, 0),
+		markdown:    markdownRenderer{enabled: cfg.UI.MarkdownEnabled(), style: cfg.UI.MarkdownStyle},
+		cwd:         cwd,
+		filePath:    openPath,
+		status:      "private markdown vault",
 	}
 	return m
 }
@@ -139,6 +166,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.mode == modeAI {
 			return m.updateAI(msg)
 		}
+		if m.mode == modeSaveFile {
+			return m.updateSaveFile(msg)
+		}
+		if m.mode == modeSaveVault {
+			return m.updateSaveVault(msg)
+		}
 		if m.mode == modeGenerating {
 			return m, nil
 		}
@@ -146,8 +179,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case aiResultMsg:
 		m.aiBusy = false
 		m.mode = modeWrite
-		m.focus = focusEditor
-		m.editor.Focus()
+		m.setView(viewEdit)
 		if msg.err != nil {
 			m.err = msg.err.Error()
 			m.status = "ai insert failed"
@@ -209,27 +241,29 @@ func (m model) updateVault(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "tab":
-		m.cycleFocus(1)
-		return m, nil
-	case "shift+tab":
-		m.cycleFocus(-1)
+		m.cycleFocus()
 		return m, nil
 	case "ctrl+s":
 		m.save()
 		m.renderTree()
 		return m, nil
+	case "ctrl+v":
+		return m.startSaveVault()
+	case "ctrl+f":
+		return m.startSaveFile()
 	case "ctrl+n":
 		m.newVaultNote()
 		return m, nil
 	case "ctrl+p", "alt+i":
 		return m.startAIInsert()
 	case "ctrl+o":
-		m.focus = focusTree
-		m.editor.Blur()
+		m.toggleTree()
 		return m, nil
 	case "ctrl+e":
-		m.focus = focusEditor
-		m.editor.Focus()
+		m.setView(viewEdit)
+		return m, nil
+	case "ctrl+r":
+		m.setView(viewRender)
 		return m, nil
 	case "pgup":
 		if m.focus == focusPreview {
@@ -252,15 +286,14 @@ func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 	case "esc":
-		m.focus = focusEditor
-		m.editor.Focus()
+		m.setMainFocus()
 		return m, nil
 	}
 
 	if m.focus == focusTree {
 		return m.updateTree(msg)
 	}
-	if m.focus == focusEditor {
+	if m.view == viewEdit && m.focus == focusEditor {
 		before := m.editor.Value()
 		var cmd tea.Cmd
 		m.editor, cmd = m.editor.Update(msg)
@@ -270,9 +303,12 @@ func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, cmd
 	}
-	var cmd tea.Cmd
-	m.preview, cmd = m.preview.Update(msg)
-	return m, cmd
+	if m.view == viewRender {
+		var cmd tea.Cmd
+		m.preview, cmd = m.preview.Update(msg)
+		return m, cmd
+	}
+	return m, nil
 }
 
 func (m model) updateMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
@@ -299,34 +335,37 @@ func (m model) updateMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
-	if target == focusEditor {
+	if target == focusEditor && m.view == viewEdit {
 		var cmd tea.Cmd
 		m.editor, cmd = m.editor.Update(msg)
 		return m, cmd
 	}
 
-	switch msg.Type {
-	case tea.MouseWheelUp:
-		m.preview.ScrollUp(3)
-	case tea.MouseWheelDown:
-		m.preview.ScrollDown(3)
-	default:
-		var cmd tea.Cmd
-		m.preview, cmd = m.preview.Update(msg)
-		return m, cmd
+	if target == focusPreview {
+		switch msg.Type {
+		case tea.MouseWheelUp:
+			m.preview.ScrollUp(3)
+		case tea.MouseWheelDown:
+			m.preview.ScrollDown(3)
+		default:
+			var cmd tea.Cmd
+			m.preview, cmd = m.preview.Update(msg)
+			return m, cmd
+		}
 	}
 	return m, nil
 }
 
-func (m *model) cycleFocus(delta int) {
-	next := int(m.focus) + delta
-	if next < int(focusTree) {
-		next = int(focusPreview)
+func (m *model) cycleFocus() {
+	if !m.treeVisible {
+		m.setMainFocus()
+		return
 	}
-	if next > int(focusPreview) {
-		next = int(focusTree)
+	if m.focus == focusTree {
+		m.setMainFocus()
+		return
 	}
-	m.setFocus(focus(next))
+	m.setFocus(focusTree)
 }
 
 func (m *model) setFocus(f focus) {
@@ -338,12 +377,37 @@ func (m *model) setFocus(f focus) {
 	m.editor.Blur()
 }
 
+func (m *model) setMainFocus() {
+	if m.view == viewEdit {
+		m.setFocus(focusEditor)
+		return
+	}
+	m.setFocus(focusPreview)
+}
+
+func (m *model) setView(v viewMode) {
+	m.view = v
+	m.setMainFocus()
+	if v == viewRender {
+		m.renderPreview()
+	}
+}
+
+func (m *model) toggleTree() {
+	m.treeVisible = !m.treeVisible
+	if m.treeVisible {
+		m.setFocus(focusTree)
+		return
+	}
+	m.setMainFocus()
+}
+
 func (m model) focusAtX(x int) focus {
-	treeW, editorW, _ := m.panelWidths()
-	if x < treeW {
+	treeW, _ := m.layoutWidths()
+	if m.treeVisible && x < treeW {
 		return focusTree
 	}
-	if x < treeW+editorW {
+	if m.view == viewEdit {
 		return focusEditor
 	}
 	return focusPreview
@@ -373,13 +437,100 @@ func (m model) updateAI(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.generateAIBlock(instruction, m.editor.Value())
 	case "esc":
 		m.mode = modeWrite
-		m.focus = focusEditor
-		m.editor.Focus()
+		m.setMainFocus()
 		m.status = "ai insert cancelled"
 		return m, nil
 	default:
 		var cmd tea.Cmd
 		m.aiPrompt, cmd = m.aiPrompt.Update(msg)
+		return m, cmd
+	}
+}
+
+func (m model) startSaveFile() (tea.Model, tea.Cmd) {
+	path := m.diskPath
+	if path == "" {
+		name := m.vaultPath
+		if name == "" {
+			name = m.filePath
+		}
+		if name == "" {
+			name = strings.ToLower(strings.ReplaceAll(titleFor("", m.editor.Value()), " ", "-")) + ".md"
+		}
+		path = filepath.Join(m.cwd, filepath.Base(name))
+	}
+	m.mode = modeSaveFile
+	m.filePrompt.SetValue(path)
+	m.filePrompt.Focus()
+	m.editor.Blur()
+	m.status = "save to filesystem"
+	return m, textinput.Blink
+}
+
+func (m model) startSaveVault() (tea.Model, tea.Cmd) {
+	path := m.vaultPath
+	if path == "" {
+		path = defaultVaultPath(m.diskPath, m.cwd, m.editor.Value())
+	}
+	m.mode = modeSaveVault
+	m.vaultPrompt.SetValue(path)
+	m.vaultPrompt.Focus()
+	m.editor.Blur()
+	m.status = "save to encrypted vault"
+	return m, textinput.Blink
+}
+
+func (m model) updateSaveFile(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		path := strings.TrimSpace(m.filePrompt.Value())
+		if path == "" {
+			m.err = "filesystem path is required"
+			return m, nil
+		}
+		if err := m.saveToDiskPath(path); err != nil {
+			m.err = err.Error()
+			return m, nil
+		}
+		m.mode = modeWrite
+		m.setMainFocus()
+		return m, nil
+	case "esc":
+		m.mode = modeWrite
+		m.setMainFocus()
+		m.status = "filesystem save cancelled"
+		return m, nil
+	default:
+		var cmd tea.Cmd
+		m.filePrompt, cmd = m.filePrompt.Update(msg)
+		return m, cmd
+	}
+}
+
+func (m model) updateSaveVault(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		path := strings.TrimSpace(m.vaultPrompt.Value())
+		if path == "" {
+			m.err = "vault path is required"
+			return m, nil
+		}
+		if err := m.saveToVaultPath(path); err != nil {
+			m.err = err.Error()
+			return m, nil
+		}
+		m.mode = modeWrite
+		m.setMainFocus()
+		m.renderTree()
+		return m, nil
+	case "esc":
+		m.mode = modeWrite
+		m.setMainFocus()
+		m.status = "vault save cancelled"
+		return m, nil
+	default:
+		var cmd tea.Cmd
+		m.vaultPrompt, cmd = m.vaultPrompt.Update(msg)
 		return m, cmd
 	}
 }
@@ -407,8 +558,7 @@ func (m model) updateTree(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		m.openSelected()
 	case "esc":
-		m.focus = focusEditor
-		m.editor.Focus()
+		m.setMainFocus()
 	}
 	return m, nil
 }
@@ -428,12 +578,13 @@ func (m *model) newVaultNote() {
 	name := "untitled-" + uuid.NewString()[:8] + ".md"
 	m.vaultID = uuid.NewString()
 	m.filePath = name
+	m.vaultPath = name
+	m.diskPath = ""
 	m.isVault = true
 	m.editor.SetValue("# Untitled\n\n")
 	m.dirty = true
 	m.status = "new vault note " + name
-	m.focus = focusEditor
-	m.editor.Focus()
+	m.setView(viewEdit)
 	m.renderPreview()
 }
 
@@ -480,6 +631,8 @@ func (m *model) openDiskPath(path string) error {
 		return err
 	}
 	m.filePath = abs
+	m.diskPath = abs
+	m.vaultPath = ""
 	m.cwd = filepath.Dir(abs)
 	m.isVault = false
 	m.vaultID = ""
@@ -487,8 +640,7 @@ func (m *model) openDiskPath(path string) error {
 	m.dirty = false
 	m.status = "editing " + abs
 	m.err = ""
-	m.focus = focusEditor
-	m.editor.Focus()
+	m.setView(viewEdit)
 	if err := m.renderTree(); err != nil {
 		return err
 	}
@@ -505,52 +657,101 @@ func (m *model) openVaultPath(path string) error {
 		return fmt.Errorf("vault note not found: %s", path)
 	}
 	m.filePath = note.Path
+	m.vaultPath = note.Path
+	m.diskPath = ""
 	m.vaultID = note.ID
 	m.isVault = true
 	m.editor.SetValue(content)
 	m.dirty = false
 	m.status = "editing vault:" + note.Path
 	m.err = ""
-	m.focus = focusEditor
-	m.editor.Focus()
+	m.setView(viewEdit)
 	m.renderPreview()
 	return nil
 }
 
 func (m *model) save() {
-	content := m.editor.Value()
 	if m.isVault {
-		if m.vaultID == "" {
-			m.vaultID = uuid.NewString()
-		}
-		if strings.TrimSpace(m.filePath) == "" {
-			m.filePath = strings.ToLower(strings.ReplaceAll(titleFor("", content), " ", "-")) + ".md"
-		}
-		if err := m.store.SaveNote(m.vaultID, m.filePath, titleFor(m.filePath, content), content); err != nil {
-			m.err = err.Error()
-			return
-		}
-		m.status = "saved vault:" + m.filePath
-		m.dirty = false
-		m.err = ""
+		m.saveToVault()
 		return
 	}
-	if m.filePath == "" {
-		m.isVault = true
-		m.save()
+	if m.diskPath == "" {
+		m.err = "no filesystem path; use ctrl+f"
 		return
 	}
-	if err := os.MkdirAll(filepath.Dir(m.filePath), 0o755); err != nil {
+	if err := m.saveToDiskPath(m.diskPath); err != nil {
 		m.err = err.Error()
 		return
 	}
-	if err := os.WriteFile(m.filePath, []byte(content), 0o644); err != nil {
-		m.err = err.Error()
-		return
+}
+
+func (m *model) saveToVault() {
+	path := m.vaultPath
+	if path == "" {
+		path = defaultVaultPath(m.diskPath, m.cwd, m.editor.Value())
 	}
-	m.status = "saved " + m.filePath
+	if err := m.saveToVaultPath(path); err != nil {
+		m.err = err.Error()
+	}
+}
+
+func (m *model) saveToVaultPath(path string) error {
+	content := m.editor.Value()
+	if m.vaultID == "" {
+		m.vaultID = uuid.NewString()
+	}
+	path = cleanVaultPath(path)
+	if path == "" {
+		return fmt.Errorf("invalid vault path")
+	}
+	if err := m.store.SaveNote(m.vaultID, path, titleFor(path, content), content); err != nil {
+		return err
+	}
+	m.vaultPath = path
+	m.filePath = path
+	m.isVault = true
+	m.status = "saved vault:" + path
 	m.dirty = false
 	m.err = ""
+	return nil
+}
+
+func (m *model) saveToDiskPath(path string) error {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
+		return err
+	}
+	if err := os.WriteFile(abs, []byte(m.editor.Value()), 0o644); err != nil {
+		return err
+	}
+	m.filePath = abs
+	m.diskPath = abs
+	m.isVault = false
+	m.cwd = filepath.Dir(abs)
+	m.status = "saved " + abs
+	m.dirty = false
+	m.err = ""
+	return nil
+}
+
+func defaultVaultPath(diskPath, cwd, content string) string {
+	if diskPath != "" {
+		if rel, err := filepath.Rel(cwd, diskPath); err == nil && !strings.HasPrefix(rel, "..") && rel != "." {
+			return cleanVaultPath(rel)
+		}
+		return cleanVaultPath(filepath.Base(diskPath))
+	}
+	title := strings.ToLower(strings.ReplaceAll(titleFor("", content), " ", "-"))
+	if title == "" {
+		title = "untitled"
+	}
+	if filepath.Ext(title) == "" {
+		title += ".md"
+	}
+	return cleanVaultPath(title)
 }
 
 func (m *model) renderTree() error {
@@ -578,10 +779,10 @@ func (m *model) renderPreview() {
 
 func (m *model) resize() {
 	innerH := m.bodyHeight()
-	_, editorW, previewW := m.panelWidths()
-	m.editor.SetWidth(contentWidth(m.styles.panel, editorW))
+	_, mainW := m.layoutWidths()
+	m.editor.SetWidth(contentWidth(m.styles.panel, mainW))
 	m.editor.SetHeight(contentHeight(m.styles.panel, innerH))
-	m.preview.Width = contentWidth(m.styles.panel, previewW)
+	m.preview.Width = contentWidth(m.styles.panel, mainW)
 	m.preview.Height = contentHeight(m.styles.panel, innerH)
 	m.markdown.Resize(m.preview.Width)
 }

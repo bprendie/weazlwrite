@@ -32,6 +32,10 @@ func (m model) View() string {
 		body = m.aiPromptView()
 	} else if m.mode == modeGenerating {
 		body = m.generatingView()
+	} else if m.mode == modeSaveFile {
+		body = m.saveFileView()
+	} else if m.mode == modeSaveVault {
+		body = m.saveVaultView()
 	} else {
 		body = m.writeView()
 	}
@@ -43,25 +47,23 @@ func (m model) View() string {
 
 func (m model) writeView() string {
 	innerH := m.bodyHeight()
-	treeW, editorW, previewW := m.panelWidths()
+	treeW, mainW := m.layoutWidths()
 
 	treeStyle := m.styles.sidebar
-	editorStyle := m.styles.panel
-	previewStyle := m.styles.panel
 	if m.focus == focusTree {
 		treeStyle = m.styles.sidebar.BorderForeground(neonCyan)
 	}
-	if m.focus == focusEditor {
-		editorStyle = m.styles.activePanel
-	}
-	if m.focus == focusPreview {
-		previewStyle = m.styles.activePanel
-	}
 
+	mainContent := m.editor.View()
+	if m.view == viewRender {
+		mainContent = m.preview.View()
+	}
+	main := renderPanel(m.styles.activePanel, mainW, innerH, mainContent)
+	if !m.treeVisible {
+		return main
+	}
 	tree := renderPanel(treeStyle, treeW, innerH, m.treeView(contentWidth(treeStyle, treeW), contentHeight(treeStyle, innerH)))
-	editor := renderPanel(editorStyle, editorW, innerH, m.editor.View())
-	preview := renderPanel(previewStyle, previewW, innerH, m.preview.View())
-	return lipgloss.JoinHorizontal(lipgloss.Top, tree, editor, preview)
+	return lipgloss.JoinHorizontal(lipgloss.Top, tree, main)
 }
 
 func (m model) aiPromptView() string {
@@ -90,6 +92,32 @@ func (m model) generatingView() string {
 		Render(copy))
 }
 
+func (m model) saveFileView() string {
+	w := max(20, m.width)
+	popupWidth := min(80, max(30, w-4))
+	copy := "Save to filesystem\n\n" + m.filePrompt.View()
+	return lipgloss.PlaceHorizontal(w, lipgloss.Center, lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(neonCyan).
+		Background(panel).
+		Padding(1, 2).
+		Width(max(1, popupWidth-6)).
+		Render(copy))
+}
+
+func (m model) saveVaultView() string {
+	w := max(20, m.width)
+	popupWidth := min(80, max(30, w-4))
+	copy := "Save to encrypted vault\n\n" + m.vaultPrompt.View()
+	return lipgloss.PlaceHorizontal(w, lipgloss.Center, lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(neonViolet).
+		Background(panel).
+		Padding(1, 2).
+		Width(max(1, popupWidth-6)).
+		Render(copy))
+}
+
 func (m model) treeView(width, height int) string {
 	if len(m.tree) == 0 {
 		return m.styles.sidebarDim.Render("empty")
@@ -100,6 +128,9 @@ func (m model) treeView(width, height int) string {
 			break
 		}
 		name := entry.name
+		if entry.vault && entry.name != "Vault" {
+			name = strings.Repeat("  ", entry.depth) + entry.name
+		}
 		if !entry.vault && entry.isDir && entry.path == m.cwd {
 			name = filepath.Base(entry.path) + "/"
 			if name == "./" || name == "/" {
@@ -133,11 +164,25 @@ func (m model) helpText() string {
 	if m.mode == modeGenerating {
 		return "waiting for local model | ctrl+c quit"
 	}
+	if m.mode == modeSaveFile {
+		return "enter save | esc cancel | ctrl+c quit"
+	}
+	if m.mode == modeSaveVault {
+		return "enter save encrypted | esc cancel | ctrl+c quit"
+	}
 	target := "vault"
 	if !m.isVault && m.filePath != "" {
 		target = fmt.Sprintf("disk:%s", m.filePath)
 	}
-	return "tab panes | ctrl+p ai insert | ctrl+s save " + target + " | ctrl+n new vault note | ctrl+o files | ctrl+e editor | mouse wheel scroll | ctrl+c quit"
+	mode := "edit"
+	if m.view == viewRender {
+		mode = "render"
+	}
+	tree := "tree:on"
+	if !m.treeVisible {
+		tree = "tree:off"
+	}
+	return mode + " " + tree + " | ^E edit | ^R render | ^O tree | ^S " + target + " | ^V vault | ^F file | ^P AI | ^C"
 }
 
 func (m model) bodyHeight() int {
@@ -145,16 +190,14 @@ func (m model) bodyHeight() int {
 	return max(1, m.height-headerLines-2)
 }
 
-func (m model) panelWidths() (treeW, editorW, previewW int) {
+func (m model) layoutWidths() (treeW, mainW int) {
 	innerW := max(20, m.width)
-	treeW = min(30, max(18, innerW/4))
-	workW := max(20, innerW-treeW)
-	editorW = max(10, workW/2)
-	previewW = max(10, innerW-treeW-editorW)
-	if total := treeW + editorW + previewW; total > innerW {
-		previewW = max(1, previewW-(total-innerW))
+	if !m.treeVisible {
+		return 0, innerW
 	}
-	return treeW, editorW, previewW
+	treeW = min(30, max(18, innerW/4))
+	mainW = max(1, innerW-treeW)
+	return treeW, mainW
 }
 
 func renderPanel(style lipgloss.Style, outerW, outerH int, content string) string {

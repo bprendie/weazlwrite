@@ -15,10 +15,10 @@
     }
   },
   "database": {
-    "path": "/home/you/.local/share/weazlwrite/weazlwrite.sqlite3"
+    "path": "/home/you/.weazlwrite/vault/weazlwrite.sqlite3"
   },
   "vault": {
-    "root": "/home/you/.local/share/weazlwrite/vault"
+    "root": "/home/you/.weazlwrite/vault"
   },
   "ui": {
     "render_markdown": true,

@@ -58,16 +58,16 @@ func TestFullLogoRendersAtEightyColumns(t *testing.T) {
 }
 
 func TestTabCyclesPanes(t *testing.T) {
-	m := model{styles: newStyles(), mode: modeWrite, focus: focusEditor}
+	m := model{styles: newStyles(), mode: modeWrite, focus: focusEditor, view: viewEdit, treeVisible: true, editor: textarea.New()}
 	updated, _ := m.updateWrite(tea.KeyMsg{Type: tea.KeyTab})
 	got := updated.(model)
-	if got.focus != focusPreview {
-		t.Fatalf("tab from editor focus = %v, want preview", got.focus)
+	if got.focus != focusTree {
+		t.Fatalf("tab from editor focus = %v, want tree", got.focus)
 	}
 	updated, _ = got.updateWrite(tea.KeyMsg{Type: tea.KeyTab})
 	got = updated.(model)
-	if got.focus != focusTree {
-		t.Fatalf("tab from preview focus = %v, want tree", got.focus)
+	if got.focus != focusEditor {
+		t.Fatalf("tab from tree focus = %v, want editor", got.focus)
 	}
 }
 
@@ -77,5 +77,36 @@ func TestCtrlPOpensAIPrompt(t *testing.T) {
 	got := updated.(model)
 	if got.mode != modeAI {
 		t.Fatalf("ctrl+p mode = %v, want modeAI", got.mode)
+	}
+}
+
+func TestCtrlRSwitchesToRenderMode(t *testing.T) {
+	m := model{styles: newStyles(), mode: modeWrite, focus: focusEditor, view: viewEdit, editor: textarea.New()}
+	updated, _ := m.updateWrite(tea.KeyMsg{Type: tea.KeyCtrlR})
+	got := updated.(model)
+	if got.view != viewRender || got.focus != focusPreview {
+		t.Fatalf("ctrl+r view/focus = %v/%v, want render/preview", got.view, got.focus)
+	}
+}
+
+func TestVaultTreeEntriesUseFilesystemStyleHierarchy(t *testing.T) {
+	entries := vaultTreeEntries([]string{
+		"projects/specs/api.md",
+		"projects/readme.md",
+		"daily.md",
+	})
+	got := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		got = append(got, strings.Repeat("  ", entry.depth)+entry.name)
+	}
+	want := []string{
+		"  daily.md",
+		"  projects/",
+		"    readme.md",
+		"    specs/",
+		"      api.md",
+	}
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("vault tree:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
 	}
 }

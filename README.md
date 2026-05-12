@@ -1,21 +1,16 @@
-# weazlwrite
+# WeazlWrite
 
-Terminal Markdown writing for the Weazl app suite.
+WeazlWrite is a private, local-first Markdown writing TUI for the Weazl app suite. It gives you a quiet terminal workspace, a password-protected SQLite vault, filesystem notes when you want them, Glamour-rendered previews, and a local AI helper for dropping clean Markdown blocks into the draft.
 
-`weazlwrite` is a dark, cyberpunk-flavored Markdown editor with:
+## Defaults
 
-- password-gated local SQLite vault storage
-- encrypted vault notes using bcrypt-derived unlock flow and AES-GCM content storage
-- live Markdown preview rendered with Glamour
-- AI block insertion through local Ollama or vLLM providers
-- local directory access for opening and saving `.md`, `.markdown`, and `.txt` files
-- direct terminal opening with `weazlwrite ./somefile.md`
+On first launch, WeazlWrite writes `~/.config/weazlwrite/config.json` with local model defaults:
 
-## Build
+- `local-vllm`: `http://localhost:8000`
+- model: `local-model`
+- `local-ollama`: `http://localhost:11434`
 
-```sh
-go build -o weazlwrite ./cmd/weazlwrite
-```
+The encrypted vault lives under `~/.weazlwrite/vault`. Notes inside the vault are stored in SQLite with password-protected access and AES-GCM encrypted payloads, but they are shown in the TUI as a filesystem-style tree.
 
 ## Install
 
@@ -23,7 +18,9 @@ go build -o weazlwrite ./cmd/weazlwrite
 ./scripts/install.sh
 ```
 
-The installer builds to `~/.weazlwrite/bin/weazlwrite`, adds that directory to your shell PATH, prompts for a local vLLM or Ollama provider, and launches the app. Set `WEAZLWRITE_SKIP_LAUNCH=1` to install and configure without starting the TUI.
+The installer builds `weazlwrite`, tucks it into `~/.weazlwrite/bin`, adds that directory to your shell `PATH`, prompts for a local vLLM or Ollama provider, and launches the app.
+
+Set `WEAZLWRITE_SKIP_LAUNCH=1` to install and configure without starting the TUI.
 
 ## Run
 
@@ -32,7 +29,14 @@ The installer builds to `~/.weazlwrite/bin/weazlwrite`, adds that directory to y
 ./weazlwrite ./notes/example.md
 ```
 
-Configuration is created at `~/.config/weazlwrite/config.json` by default. Data is stored under `~/.local/share/weazlwrite`.
+## Build From Source
+
+WeazlWrite is a Go app, but it uses SQLite through `go-sqlite3`, so builds need Go 1.25 or newer, CGO, and a working C compiler.
+
+```sh
+go build -o weazlwrite ./cmd/weazlwrite
+go build -o weazlwrite-setup ./cmd/weazlwrite-setup
+```
 
 Useful environment overrides:
 
@@ -41,11 +45,14 @@ Useful environment overrides:
 
 ## Keys
 
-- `ctrl+s` save
-- `ctrl+p` prompt the local AI model to insert a Markdown block at the cursor
-- `ctrl+n` new vault note
-- `ctrl+o` focus file tree
-- `ctrl+e` focus editor
-- `tab` move between panes
-- `pgup` / `pgdn` scroll preview
-- `ctrl+c` quit
+- `ctrl+e`: edit mode
+- `ctrl+r`: rendered preview mode
+- `ctrl+o`: show or hide the file tree
+- `tab`: move between the file tree and the main writing surface
+- `ctrl+s`: save to the current target
+- `ctrl+v`: save to the encrypted vault
+- `ctrl+f`: save to a filesystem path
+- `ctrl+p`: ask the local model to insert a Markdown block
+- `ctrl+n`: new vault note
+- mouse wheel: scroll the active surface
+- `ctrl+c`: quit
