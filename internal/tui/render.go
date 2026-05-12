@@ -95,7 +95,7 @@ func (m model) generatingView() string {
 func (m model) saveFileView() string {
 	w := max(20, m.width)
 	popupWidth := min(80, max(30, w-4))
-	copy := "Save to filesystem\n\n" + m.filePrompt.View()
+	copy := "Save to:\n\n" + m.filePrompt.View()
 	return lipgloss.PlaceHorizontal(w, lipgloss.Center, lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(neonCyan).
@@ -108,7 +108,7 @@ func (m model) saveFileView() string {
 func (m model) saveVaultView() string {
 	w := max(20, m.width)
 	popupWidth := min(80, max(30, w-4))
-	copy := "Save to encrypted vault\n\n" + m.vaultPrompt.View()
+	copy := "Save to:\n\n" + m.vaultPrompt.View()
 	return lipgloss.PlaceHorizontal(w, lipgloss.Center, lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(neonViolet).
@@ -182,7 +182,7 @@ func (m model) helpText() string {
 	if !m.treeVisible {
 		tree = "tree:off"
 	}
-	return mode + " " + tree + " | ^E edit | ^R render | ^O tree | ^S " + target + " | ^V vault | ^F file | ^P AI | ^C"
+	return mode + " " + tree + " | ^E edit | ^R render | ^O tree | ^S " + target + " | ^V save to vault | ^F save to file | ^P AI | ^C"
 }
 
 func (m model) bodyHeight() int {

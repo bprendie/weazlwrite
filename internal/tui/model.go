@@ -463,7 +463,7 @@ func (m model) startSaveFile() (tea.Model, tea.Cmd) {
 	m.filePrompt.SetValue(path)
 	m.filePrompt.Focus()
 	m.editor.Blur()
-	m.status = "save to filesystem"
+	m.status = "save to: filesystem"
 	return m, textinput.Blink
 }
 
@@ -476,7 +476,7 @@ func (m model) startSaveVault() (tea.Model, tea.Cmd) {
 	m.vaultPrompt.SetValue(path)
 	m.vaultPrompt.Focus()
 	m.editor.Blur()
-	m.status = "save to encrypted vault"
+	m.status = "save to: encrypted vault"
 	return m, textinput.Blink
 }
 
