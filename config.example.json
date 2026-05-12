@@ -1,0 +1,12 @@
+{
+  "database": {
+    "path": "/home/you/.local/share/weazlwrite/weazlwrite.sqlite3"
+  },
+  "vault": {
+    "root": "/home/you/.local/share/weazlwrite/vault"
+  },
+  "ui": {
+    "render_markdown": true,
+    "markdown_style": "dark"
+  }
+}
