@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 )
@@ -82,7 +83,7 @@ func (m model) aiPromptView() string {
 func (m model) generatingView() string {
 	w := max(20, m.width)
 	popupWidth := min(60, max(30, w-4))
-	copy := "AI is generating a Markdown block..."
+	copy := fmt.Sprintf("%s %s", m.working.View(), m.thinkingPhrase())
 	return lipgloss.PlaceHorizontal(w, lipgloss.Center, lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(neonViolet).
@@ -90,6 +91,16 @@ func (m model) generatingView() string {
 		Padding(1, 2).
 		Width(max(1, popupWidth-6)).
 		Render(copy))
+}
+
+func (m model) thinkingPhrase() string {
+	if len(modelThinkingPhrases) == 0 || m.generatingAt.IsZero() {
+		return "model_is_thinking"
+	}
+	phase := min(2, int(time.Since(m.generatingAt)/(20*time.Second)))
+	start := int((m.generatingAt.UnixNano() / int64(time.Millisecond)) % int64(len(modelThinkingPhrases)))
+	idx := (start + phase) % len(modelThinkingPhrases)
+	return modelThinkingPhrases[idx]
 }
 
 func (m model) saveFileView() string {

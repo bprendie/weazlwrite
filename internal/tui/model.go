@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -46,35 +47,37 @@ const (
 )
 
 type model struct {
-	cfg         config.Config
-	cfgPath     string
-	store       *storage.Store
-	styles      styles
-	mode        mode
-	focus       focus
-	view        viewMode
-	treeVisible bool
-	width       int
-	height      int
-	password    textinput.Model
-	aiPrompt    textinput.Model
-	filePrompt  textinput.Model
-	vaultPrompt textinput.Model
-	editor      textarea.Model
-	preview     viewport.Model
-	markdown    markdownRenderer
-	tree        []treeEntry
-	treeIdx     int
-	cwd         string
-	filePath    string
-	diskPath    string
-	vaultPath   string
-	vaultID     string
-	isVault     bool
-	dirty       bool
-	aiBusy      bool
-	err         string
-	status      string
+	cfg          config.Config
+	cfgPath      string
+	store        *storage.Store
+	styles       styles
+	mode         mode
+	focus        focus
+	view         viewMode
+	treeVisible  bool
+	width        int
+	height       int
+	password     textinput.Model
+	aiPrompt     textinput.Model
+	filePrompt   textinput.Model
+	vaultPrompt  textinput.Model
+	working      spinner.Model
+	editor       textarea.Model
+	preview      viewport.Model
+	markdown     markdownRenderer
+	tree         []treeEntry
+	treeIdx      int
+	cwd          string
+	filePath     string
+	diskPath     string
+	vaultPath    string
+	vaultID      string
+	isVault      bool
+	dirty        bool
+	aiBusy       bool
+	generatingAt time.Time
+	err          string
+	status       string
 }
 
 type aiResultMsg struct {
@@ -101,6 +104,12 @@ func New(cfg config.Config, cfgPath string, store *storage.Store, openPath strin
 	vaultPrompt.Placeholder = "projects/specs/document.md"
 	vaultPrompt.CharLimit = 4096
 
+	s := newStyles()
+	working := spinner.New(
+		spinner.WithSpinner(spinner.Jump),
+		spinner.WithStyle(s.status),
+	)
+
 	ta := textarea.New()
 	ta.Placeholder = "# Untitled\n\nStart writing..."
 	ta.ShowLineNumbers = true
@@ -112,7 +121,7 @@ func New(cfg config.Config, cfgPath string, store *storage.Store, openPath strin
 		cfg:         cfg,
 		cfgPath:     cfgPath,
 		store:       store,
-		styles:      newStyles(),
+		styles:      s,
 		mode:        modeVault,
 		focus:       focusEditor,
 		view:        viewEdit,
@@ -121,6 +130,7 @@ func New(cfg config.Config, cfgPath string, store *storage.Store, openPath strin
 		aiPrompt:    ai,
 		filePrompt:  filePrompt,
 		vaultPrompt: vaultPrompt,
+		working:     working,
 		editor:      ta,
 		preview:     viewport.New(0, 0),
 		markdown:    markdownRenderer{enabled: cfg.UI.MarkdownEnabled(), style: cfg.UI.MarkdownStyle},
@@ -178,6 +188,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateWrite(msg)
 	case aiResultMsg:
 		m.aiBusy = false
+		m.generatingAt = time.Time{}
 		m.mode = modeWrite
 		m.setView(viewEdit)
 		if msg.err != nil {
@@ -197,6 +208,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.status = "inserted ai block"
 		m.renderPreview()
 		return m, nil
+	case spinner.TickMsg:
+		if m.mode == modeGenerating || m.aiBusy {
+			var cmd tea.Cmd
+			m.working, cmd = m.working.Update(msg)
+			return m, cmd
+		}
 	}
 	return m, nil
 }
@@ -432,9 +449,10 @@ func (m model) updateAI(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		m.mode = modeGenerating
 		m.aiBusy = true
+		m.generatingAt = time.Now()
 		m.err = ""
 		m.status = "ai generating block"
-		return m, m.generateAIBlock(instruction, m.editor.Value())
+		return m, tea.Batch(m.generateAIBlock(instruction, m.editor.Value()), m.working.Tick)
 	case "esc":
 		m.mode = modeWrite
 		m.setMainFocus()
