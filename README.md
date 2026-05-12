@@ -77,6 +77,8 @@ The vault is encrypted SQLite, but it behaves like a note tree. Save something a
 
 The left rail has two roots: `Vault` for encrypted notes and `Files` for regular filesystem work. Folders fold and unfold with `space`, and the active note gets a tiny marker so you can tell where you are without the tree turning into a blinking holiday display. A `*` means the current buffer has unsaved changes.
 
+Big directories are fine. Move with `j` / `k`, the arrow keys, or the mouse wheel; the tree keeps the selected row in view instead of pretending the world ends at the bottom of the pane.
+
 Press `ctrl+v` to save the current buffer into the encrypted vault. Press `ctrl+f` to save it out to the regular filesystem. Press `ctrl+s` when you simply want to save back to wherever the current note already lives.
 
 That split is the point: draft in the open when the file belongs in a repo, tuck private notes into the vault when they should stay local and password-protected.
