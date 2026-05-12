@@ -42,10 +42,10 @@ Useful environment overrides:
 ## Keys
 
 - `ctrl+s` save
-- `ctrl+i` prompt the local AI model to insert a Markdown block at the cursor
+- `ctrl+p` prompt the local AI model to insert a Markdown block at the cursor
 - `ctrl+n` new vault note
 - `ctrl+o` focus file tree
 - `ctrl+e` focus editor
-- `ctrl+p` focus preview
+- `tab` move between panes
 - `pgup` / `pgdn` scroll preview
 - `ctrl+c` quit

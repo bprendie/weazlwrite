@@ -126,10 +126,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.resize()
 		m.renderPreview()
 	case tea.MouseMsg:
-		if m.mode == modeWrite && m.focus == focusPreview {
-			var cmd tea.Cmd
-			m.preview, cmd = m.preview.Update(msg)
-			return m, cmd
+		if m.mode == modeWrite {
+			return m.updateMouse(msg)
 		}
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" {
@@ -210,6 +208,12 @@ func (m model) updateVault(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
+	case "tab":
+		m.cycleFocus(1)
+		return m, nil
+	case "shift+tab":
+		m.cycleFocus(-1)
+		return m, nil
 	case "ctrl+s":
 		m.save()
 		m.renderTree()
@@ -217,19 +221,10 @@ func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "ctrl+n":
 		m.newVaultNote()
 		return m, nil
-	case "ctrl+i":
-		m.mode = modeAI
-		m.aiPrompt.SetValue("")
-		m.aiPrompt.Focus()
-		m.editor.Blur()
-		m.status = "ai intelligence prompt"
-		return m, textinput.Blink
+	case "ctrl+p", "alt+i":
+		return m.startAIInsert()
 	case "ctrl+o":
 		m.focus = focusTree
-		m.editor.Blur()
-		return m, nil
-	case "ctrl+p":
-		m.focus = focusPreview
 		m.editor.Blur()
 		return m, nil
 	case "ctrl+e":
@@ -278,6 +273,89 @@ func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.preview, cmd = m.preview.Update(msg)
 	return m, cmd
+}
+
+func (m model) updateMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
+	mouse := tea.MouseEvent(msg)
+	if msg.Action == tea.MouseActionPress && !mouse.IsWheel() {
+		m.setFocus(m.focusAtX(msg.X))
+		return m, nil
+	}
+	if !mouse.IsWheel() {
+		return m, nil
+	}
+
+	target := m.focusAtX(msg.X)
+	if target == focusTree {
+		switch msg.Type {
+		case tea.MouseWheelUp:
+			if m.treeIdx > 0 {
+				m.treeIdx--
+			}
+		case tea.MouseWheelDown:
+			if m.treeIdx < len(m.tree)-1 {
+				m.treeIdx++
+			}
+		}
+		return m, nil
+	}
+	if target == focusEditor {
+		var cmd tea.Cmd
+		m.editor, cmd = m.editor.Update(msg)
+		return m, cmd
+	}
+
+	switch msg.Type {
+	case tea.MouseWheelUp:
+		m.preview.ScrollUp(3)
+	case tea.MouseWheelDown:
+		m.preview.ScrollDown(3)
+	default:
+		var cmd tea.Cmd
+		m.preview, cmd = m.preview.Update(msg)
+		return m, cmd
+	}
+	return m, nil
+}
+
+func (m *model) cycleFocus(delta int) {
+	next := int(m.focus) + delta
+	if next < int(focusTree) {
+		next = int(focusPreview)
+	}
+	if next > int(focusPreview) {
+		next = int(focusTree)
+	}
+	m.setFocus(focus(next))
+}
+
+func (m *model) setFocus(f focus) {
+	m.focus = f
+	if f == focusEditor {
+		m.editor.Focus()
+		return
+	}
+	m.editor.Blur()
+}
+
+func (m model) focusAtX(x int) focus {
+	treeW, editorW, _ := m.panelWidths()
+	if x < treeW {
+		return focusTree
+	}
+	if x < treeW+editorW {
+		return focusEditor
+	}
+	return focusPreview
+}
+
+func (m model) startAIInsert() (tea.Model, tea.Cmd) {
+	m.mode = modeAI
+	m.aiPrompt.SetValue("")
+	m.aiPrompt.Focus()
+	m.editor.Blur()
+	m.status = "ai intelligence prompt"
+	return m, textinput.Blink
 }
 
 func (m model) updateAI(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -499,12 +577,8 @@ func (m *model) renderPreview() {
 }
 
 func (m *model) resize() {
-	innerW := max(20, m.width)
 	innerH := m.bodyHeight()
-	treeW := min(30, max(18, innerW/4))
-	workW := max(20, innerW-treeW)
-	editorW := max(10, workW/2)
-	previewW := max(10, innerW-treeW-editorW)
+	_, editorW, previewW := m.panelWidths()
 	m.editor.SetWidth(contentWidth(m.styles.panel, editorW))
 	m.editor.SetHeight(contentHeight(m.styles.panel, innerH))
 	m.preview.Width = contentWidth(m.styles.panel, previewW)

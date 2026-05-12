@@ -37,12 +37,8 @@ func (m model) View() string {
 }
 
 func (m model) writeView() string {
-	innerW := max(20, m.width)
 	innerH := m.bodyHeight()
-	treeW := min(30, max(18, innerW/4))
-	workW := max(20, innerW-treeW)
-	editorW := max(10, workW/2)
-	previewW := max(10, innerW-treeW-editorW)
+	treeW, editorW, previewW := m.panelWidths()
 
 	treeStyle := m.styles.sidebar
 	editorStyle := m.styles.panel
@@ -136,12 +132,24 @@ func (m model) helpText() string {
 	if !m.isVault && m.filePath != "" {
 		target = fmt.Sprintf("disk:%s", m.filePath)
 	}
-	return "ctrl+s save " + target + " | ctrl+i ai insert | ctrl+n new vault note | ctrl+o files | ctrl+e editor | ctrl+p preview | pgup/pgdn scroll preview | ctrl+c quit"
+	return "tab panes | ctrl+p ai insert | ctrl+s save " + target + " | ctrl+n new vault note | ctrl+o files | ctrl+e editor | mouse wheel scroll | ctrl+c quit"
 }
 
 func (m model) bodyHeight() int {
 	headerLines := len(strings.Split(renderLogo(ansiHeader(), max(20, m.width)), "\n"))
 	return max(3, m.height-headerLines-3)
+}
+
+func (m model) panelWidths() (treeW, editorW, previewW int) {
+	innerW := max(20, m.width)
+	treeW = min(30, max(18, innerW/4))
+	workW := max(20, innerW-treeW)
+	editorW = max(10, workW/2)
+	previewW = max(10, innerW-treeW-editorW)
+	if total := treeW + editorW + previewW; total > innerW {
+		previewW = max(1, previewW-(total-innerW))
+	}
+	return treeW, editorW, previewW
 }
 
 func renderPanel(style lipgloss.Style, outerW, outerH int, content string) string {

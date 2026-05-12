@@ -5,7 +5,9 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/bubbles/textarea"
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -49,5 +51,28 @@ func TestFullLogoRendersAtEightyColumns(t *testing.T) {
 	got := renderLogo(ansiHeader(), 80)
 	if !strings.Contains(got, "_______________.__") {
 		t.Fatalf("expected full ASCII logo at 80 columns, got %q", got)
+	}
+}
+
+func TestTabCyclesPanes(t *testing.T) {
+	m := model{styles: newStyles(), mode: modeWrite, focus: focusEditor}
+	updated, _ := m.updateWrite(tea.KeyMsg{Type: tea.KeyTab})
+	got := updated.(model)
+	if got.focus != focusPreview {
+		t.Fatalf("tab from editor focus = %v, want preview", got.focus)
+	}
+	updated, _ = got.updateWrite(tea.KeyMsg{Type: tea.KeyTab})
+	got = updated.(model)
+	if got.focus != focusTree {
+		t.Fatalf("tab from preview focus = %v, want tree", got.focus)
+	}
+}
+
+func TestCtrlPOpensAIPrompt(t *testing.T) {
+	m := model{styles: newStyles(), mode: modeWrite, focus: focusEditor, aiPrompt: textinput.New(), editor: textarea.New()}
+	updated, _ := m.updateWrite(tea.KeyMsg{Type: tea.KeyCtrlP})
+	got := updated.(model)
+	if got.mode != modeAI {
+		t.Fatalf("ctrl+p mode = %v, want modeAI", got.mode)
 	}
 }
