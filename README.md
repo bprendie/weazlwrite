@@ -17,6 +17,14 @@ Terminal Markdown writing for the Weazl app suite.
 go build -o weazlwrite ./cmd/weazlwrite
 ```
 
+## Install
+
+```sh
+./scripts/install.sh
+```
+
+The installer builds to `~/.weazlwrite/bin/weazlwrite`, adds that directory to your shell PATH, prompts for a local vLLM or Ollama provider, and launches the app. Set `WEAZLWRITE_SKIP_LAUNCH=1` to install and configure without starting the TUI.
+
 ## Run
 
 ```sh
