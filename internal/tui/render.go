@@ -392,8 +392,12 @@ func (m model) helpText() string {
 	if !m.treeVisible {
 		tree = "tree:off"
 	}
+	mouse := "mouse:on"
+	if !m.mouseCapture {
+		mouse = "select:on"
+	}
 	treeHelp := "enter open/fold | space file/drop | n folder | r rename | d delete | i import | ? help"
-	return mode + " " + tree + " | " + treeHelp + " | ^E edit | ^R render | ^O tree | ^S " + target + " | ^V vault | alt+F file | ^F find | ^G page | ^P AI | ^C"
+	return mode + " " + tree + " " + mouse + " | " + treeHelp + " | ^E edit | ^R render | ^O tree | ^Y select | ^S " + target + " | ^V vault | alt+F file | ^F find | ^G page | ^P AI | ^C"
 }
 
 func (m model) bodyHeight() int {
@@ -430,6 +434,7 @@ Main writing
   ctrl+n              New untitled vault note.
   ctrl+p              AI insert prompt. The generated Markdown block is inserted at the cursor.
   ctrl+o              Show or hide the tree.
+  ctrl+y              Toggle mouse capture. Off means terminal drag-selection works for copying text.
   ? or h              Open this help screen.
   ctrl+c              Quit.
 
@@ -447,6 +452,11 @@ Vault and filesystem
   Files entries are regular files from the current filesystem folder.
   Moving with space/drop stays inside the same side: vault-to-vault or filesystem-to-filesystem.
   To copy content between sides, use Save to: vault/filesystem or import.
+
+Copying text
+  Terminal mouse selection and app mouse scrolling compete for the same events.
+  Press ctrl+y to turn mouse capture off, then select/copy text from edit or render with your terminal.
+  Press ctrl+y again to restore mouse scrolling in the tree and panes.
 
 Import
   Select a filesystem .md, .markdown, .txt, .pdf, or .docx file and press i to import it to the vault.

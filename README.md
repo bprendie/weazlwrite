@@ -78,6 +78,7 @@ Useful environment overrides:
 - `ctrl+g`: jump to a page in the current pane
 - `ctrl+p`: ask the local model to insert a Markdown block
 - `ctrl+n`: new vault note
+- `ctrl+y`: toggle mouse capture off/on for terminal text selection
 - `?` or `h`: open the full help screen
 - `pgup` / `pgdown`: page the focused tree, editor, or render pane
 - mouse wheel: scroll the tree or active writing surface
@@ -100,6 +101,8 @@ Press `ctrl+v` to save the current buffer into the encrypted vault. Press `alt+f
 To pull existing surface files into the encrypted vault, select a `.md`, `.markdown`, `.txt`, `.pdf`, or `.docx` file and press `i`. Select a folder and press `i` to bulk-import it as a vault root, perfect for absorbing Obsidian vaults that already live on disk. Word and PDF files are aggressively stripped down and converted to pure Markdown before encryption. Image-only PDFs and image-only Word files are rejected because there is no text to harvest.
 
 Long documents get simple navigation help. `pgup` / `pgdown` page through the current edit or render pane, `ctrl+g` jumps to a page number, and `ctrl+f` finds text from your current position.
+
+Copying text is deliberate. Mouse scrolling and terminal drag-selection fight over the same events, so press `ctrl+y` to turn mouse capture off, select/copy text from the editor or renderer with your terminal, then press `ctrl+y` again to restore mouse scrolling.
 
 That split rail is the entire point: draft in the open when the code belongs in a repo, tuck private notes into the vault when they should not leave the bare metal.
 

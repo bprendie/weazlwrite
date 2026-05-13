@@ -69,6 +69,7 @@ type model struct {
 	focus        focus
 	view         viewMode
 	treeVisible  bool
+	mouseCapture bool
 	width        int
 	height       int
 	password     textinput.Model
@@ -194,6 +195,7 @@ func New(cfg config.Config, cfgPath string, openPath string) tea.Model {
 		focus:        focusEditor,
 		view:         viewEdit,
 		treeVisible:  true,
+		mouseCapture: true,
 		password:     ti,
 		confirmPass:  confirmPass,
 		vaultName:    vaultName,
@@ -225,7 +227,7 @@ func New(cfg config.Config, cfgPath string, openPath string) tea.Model {
 }
 
 func (m model) Init() tea.Cmd {
-	return textinput.Blink
+	return tea.Batch(textinput.Blink, tea.EnableMouseCellMotion)
 }
 
 func (m *model) prepareVaultPassword() {
@@ -251,7 +253,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.renderPreview()
 		m.renderHelp()
 	case tea.MouseMsg:
-		if m.mode == modeWrite {
+		if m.mode == modeWrite && m.mouseCapture {
 			return m.updateMouse(msg)
 		}
 	case tea.KeyMsg:
@@ -662,6 +664,8 @@ func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "ctrl+o":
 		m.toggleTree()
 		return m, nil
+	case "ctrl+y":
+		return m.toggleMouseCapture()
 	case "?", "h", "f1":
 		return m.startHelp()
 	case "ctrl+e":
@@ -817,6 +821,16 @@ func (m *model) toggleTree() {
 		return
 	}
 	m.setMainFocus()
+}
+
+func (m model) toggleMouseCapture() (tea.Model, tea.Cmd) {
+	m.mouseCapture = !m.mouseCapture
+	if m.mouseCapture {
+		m.status = "mouse capture on"
+		return m, tea.EnableMouseCellMotion
+	}
+	m.status = "mouse capture off; terminal selection enabled"
+	return m, tea.DisableMouse
 }
 
 func (m model) focusAtX(x int) focus {
