@@ -3,17 +3,18 @@ package tui
 import "github.com/charmbracelet/lipgloss"
 
 const (
-	neonPink   = lipgloss.Color("#FF4FD8")
-	neonViolet = lipgloss.Color("#8B5CF6")
-	neonCyan   = lipgloss.Color("#00E5FF")
-	acidGreen  = lipgloss.Color("#B6FF00")
-	amber      = lipgloss.Color("#F8D66D")
-	ink        = lipgloss.Color("#E8EAF0")
-	muted      = lipgloss.Color("#8A90A2")
-	void       = lipgloss.Color("#08080D")
-	panel      = lipgloss.Color("#11111A")
-	panelAlt   = lipgloss.Color("#171522")
-	border     = lipgloss.Color("#3B315C")
+	neonPink      = lipgloss.Color("#FF4FD8")
+	neonViolet    = lipgloss.Color("#8B5CF6")
+	neonCyan      = lipgloss.Color("#00E5FF")
+	acidGreen     = lipgloss.Color("#B6FF00")
+	warningOrange = lipgloss.Color("#FF9F1C")
+	amber         = lipgloss.Color("#F8D66D")
+	ink           = lipgloss.Color("#E8EAF0")
+	muted         = lipgloss.Color("#8A90A2")
+	void          = lipgloss.Color("#08080D")
+	panel         = lipgloss.Color("#11111A")
+	panelAlt      = lipgloss.Color("#171522")
+	border        = lipgloss.Color("#3B315C")
 )
 
 type styles struct {
@@ -26,6 +27,7 @@ type styles struct {
 	sidebar     lipgloss.Style
 	sidebarSel  lipgloss.Style
 	sidebarDim  lipgloss.Style
+	sidebarEyes lipgloss.Style
 	editor      lipgloss.Style
 	preview     lipgloss.Style
 	error       lipgloss.Style
@@ -64,6 +66,9 @@ func newStyles() styles {
 			Bold(true),
 		sidebarDim: lipgloss.NewStyle().
 			Foreground(muted),
+		sidebarEyes: lipgloss.NewStyle().
+			Foreground(warningOrange).
+			Bold(true),
 		editor: lipgloss.NewStyle().
 			Foreground(ink).
 			Background(panel),

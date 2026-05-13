@@ -38,6 +38,7 @@ const (
 	modeSaveVault
 	modeNewFolder
 	modeConfirmDelete
+	modeConfirmEyesOff
 	modeRenameTree
 	modeHelp
 	modeFind
@@ -61,55 +62,58 @@ const (
 )
 
 type model struct {
-	cfg          config.Config
-	cfgPath      string
-	store        *storage.Store
-	styles       styles
-	mode         mode
-	focus        focus
-	view         viewMode
-	treeVisible  bool
-	mouseCapture bool
-	width        int
-	height       int
-	password     textinput.Model
-	confirmPass  textinput.Model
-	vaultName    textinput.Model
-	aiPrompt     textinput.Model
-	filePrompt   textinput.Model
-	vaultPrompt  textinput.Model
-	folderPrompt textinput.Model
-	renamePrompt textinput.Model
-	findPrompt   textinput.Model
-	jumpPrompt   textinput.Model
-	working      spinner.Model
-	editor       textarea.Model
-	preview      viewport.Model
-	helpView     viewport.Model
-	markdown     markdownRenderer
-	tree         []treeEntry
-	treeIdx      int
-	treeOffset   int
-	treeExpanded map[string]bool
-	vaults       []vaultChoice
-	vaultIdx     int
-	activeVault  vaultChoice
-	deleteTarget treeEntry
-	renameTarget treeEntry
-	carryTarget  treeEntry
-	cwd          string
-	filePath     string
-	diskPath     string
-	vaultPath    string
-	vaultID      string
-	isVault      bool
-	dirty        bool
-	aiBusy       bool
-	generatingAt time.Time
-	lastFind     string
-	pendingPass  string
-	err          string
-	status       string
+	cfg           config.Config
+	cfgPath       string
+	store         *storage.Store
+	styles        styles
+	mode          mode
+	focus         focus
+	view          viewMode
+	treeVisible   bool
+	mouseCapture  bool
+	width         int
+	height        int
+	password      textinput.Model
+	confirmPass   textinput.Model
+	vaultName     textinput.Model
+	aiPrompt      textinput.Model
+	filePrompt    textinput.Model
+	vaultPrompt   textinput.Model
+	folderPrompt  textinput.Model
+	renamePrompt  textinput.Model
+	findPrompt    textinput.Model
+	jumpPrompt    textinput.Model
+	working       spinner.Model
+	editor        textarea.Model
+	preview       viewport.Model
+	helpView      viewport.Model
+	markdown      markdownRenderer
+	tree          []treeEntry
+	treeIdx       int
+	treeOffset    int
+	treeExpanded  map[string]bool
+	eyesOnlyPaths map[string]bool
+	vaults        []vaultChoice
+	vaultIdx      int
+	activeVault   vaultChoice
+	deleteTarget  treeEntry
+	eyesOffTarget treeEntry
+	renameTarget  treeEntry
+	carryTarget   treeEntry
+	cwd           string
+	filePath      string
+	diskPath      string
+	vaultPath     string
+	vaultID       string
+	isVault       bool
+	eyesOnly      bool
+	dirty         bool
+	aiBusy        bool
+	generatingAt  time.Time
+	lastFind      string
+	pendingPass   string
+	err           string
+	status        string
 }
 
 type vaultChoice struct {
@@ -286,6 +290,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.mode == modeConfirmDelete {
 			return m.updateConfirmDelete(msg)
+		}
+		if m.mode == modeConfirmEyesOff {
+			return m.updateConfirmEyesOff(msg)
 		}
 		if m.mode == modeRenameTree {
 			return m.updateRenameTree(msg)
@@ -656,6 +663,8 @@ func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.startFind()
 	case "ctrl+g":
 		return m.startJumpPage()
+	case "alt+o":
+		return m.toggleCurrentEyesOnly()
 	case "ctrl+n":
 		m.newVaultNote()
 		return m, nil
@@ -666,7 +675,7 @@ func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "ctrl+y":
 		return m.toggleMouseCapture()
-	case "?", "h", "f1":
+	case "ctrl+k", "?", "h", "f1":
 		return m.startHelp()
 	case "ctrl+e":
 		m.setView(viewEdit)
@@ -793,9 +802,10 @@ func (m *model) setFocus(f focus) {
 	m.focus = f
 	if f == focusEditor {
 		m.editor.Focus()
-		return
+	} else {
+		m.editor.Blur()
 	}
-	m.editor.Blur()
+	m.resize()
 }
 
 func (m *model) setMainFocus() {
@@ -824,6 +834,11 @@ func (m *model) toggleTree() {
 }
 
 func (m model) toggleMouseCapture() (tea.Model, tea.Cmd) {
+	if m.eyesOnly {
+		m.mouseCapture = true
+		m.err = "eyes only notes keep copy protection on"
+		return m, tea.EnableMouseCellMotion
+	}
 	m.mouseCapture = !m.mouseCapture
 	if m.mouseCapture {
 		m.status = "mouse capture on"
@@ -1049,6 +1064,43 @@ func (m model) updateConfirmDelete(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 }
 
+func (m model) updateConfirmEyesOff(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "y", "Y", "enter":
+		entry := m.eyesOffTarget
+		path := cleanVaultPath(entry.path)
+		if err := m.store.SetNoteEyesOnly(path, false); err != nil {
+			m.err = err.Error()
+			m.mode = modeWrite
+			m.focus = focusTree
+			return m, nil
+		}
+		if m.eyesOnlyPaths != nil {
+			delete(m.eyesOnlyPaths, path)
+		}
+		if m.isVault && cleanVaultPath(m.vaultPath) == path {
+			m.eyesOnly = false
+		}
+		m.mode = modeWrite
+		m.focus = focusTree
+		m.eyesOffTarget = treeEntry{}
+		m.err = ""
+		m.status = "eyes only disabled:" + path
+		if err := m.renderTree(); err != nil {
+			m.err = err.Error()
+		}
+		return m, nil
+	case "n", "N", "esc":
+		m.mode = modeWrite
+		m.focus = focusTree
+		m.eyesOffTarget = treeEntry{}
+		m.status = "eyes only unchanged"
+		return m, nil
+	default:
+		return m, nil
+	}
+}
+
 func (m model) startRenameTree() (tea.Model, tea.Cmd) {
 	entry, ok := m.selectedTreeEntry()
 	if !ok {
@@ -1124,7 +1176,7 @@ func (m model) updateTree(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "pgdown":
 		m.pageTree(1)
 	case "enter":
-		m.openSelected()
+		return m, m.openSelected()
 	case " ":
 		m.pickupOrDropSelected()
 	case "n":
@@ -1135,6 +1187,8 @@ func (m model) updateTree(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.startRenameTree()
 	case "i":
 		return m.startImportSelectedToVault()
+	case "o":
+		return m.toggleEyesOnlySelected()
 	case "esc":
 		m.carryTarget = treeEntry{}
 		m.setMainFocus()
@@ -1275,6 +1329,7 @@ func (m *model) newVaultNote() {
 	m.vaultPath = name
 	m.diskPath = ""
 	m.isVault = true
+	m.eyesOnly = false
 	m.expandTreeTo("vault:" + name)
 	m.editor.SetValue("# Untitled\n\n")
 	m.dirty = true
@@ -1283,26 +1338,30 @@ func (m *model) newVaultNote() {
 	m.renderPreview()
 }
 
-func (m *model) openSelected() {
+func (m *model) openSelected() tea.Cmd {
 	if len(m.tree) == 0 || m.treeIdx >= len(m.tree) {
-		return
+		return nil
 	}
 	entry := m.tree[m.treeIdx]
 	if entry.isDir {
 		m.toggleTreeEntry(entry)
-		return
+		return nil
 	}
 	if entry.vault && !entry.isDir {
 		if err := m.openVaultPath(entry.path); err != nil {
 			m.err = err.Error()
 		}
-		return
+		if m.eyesOnly {
+			return tea.EnableMouseCellMotion
+		}
+		return nil
 	}
 	if !entry.isDir {
 		if err := m.openDiskPath(entry.path); err != nil {
 			m.err = err.Error()
 		}
 	}
+	return nil
 }
 
 func (m *model) toggleSelectedDir() {
@@ -1457,6 +1516,70 @@ func (m *model) deleteTreeEntry(entry treeEntry) error {
 	delete(m.treeExpanded, entry.id)
 	m.status = "deleted " + entry.path
 	return nil
+}
+
+func (m model) toggleEyesOnlySelected() (tea.Model, tea.Cmd) {
+	entry, ok := m.selectedTreeEntry()
+	if !ok {
+		return m, nil
+	}
+	if !entry.vault || entry.isDir || entry.id == "vault:" {
+		m.err = "eyes only is available for vault files"
+		return m, nil
+	}
+	return m.toggleEyesOnlyPath(cleanVaultPath(entry.path), entry)
+}
+
+func (m model) toggleCurrentEyesOnly() (tea.Model, tea.Cmd) {
+	if !m.isVault || strings.TrimSpace(m.vaultPath) == "" {
+		m.err = "open a vault note to toggle eyes only"
+		return m, nil
+	}
+	path := cleanVaultPath(m.vaultPath)
+	return m.toggleEyesOnlyPath(path, treeEntry{
+		id:    "vault:" + path,
+		name:  filepath.Base(path),
+		path:  path,
+		vault: true,
+	})
+}
+
+func (m model) toggleEyesOnlyPath(path string, entry treeEntry) (tea.Model, tea.Cmd) {
+	if path == "" {
+		m.err = "missing vault note path"
+		return m, nil
+	}
+	next := !m.eyesOnlyPaths[path]
+	if !next {
+		entry.path = path
+		entry.vault = true
+		m.eyesOffTarget = entry
+		m.mode = modeConfirmEyesOff
+		m.status = "confirm disabling eyes only"
+		m.err = ""
+		return m, nil
+	}
+	if err := m.store.SetNoteEyesOnly(path, true); err != nil {
+		m.err = err.Error()
+		return m, nil
+	}
+	if m.eyesOnlyPaths == nil {
+		m.eyesOnlyPaths = map[string]bool{}
+	}
+	m.eyesOnlyPaths[path] = true
+	if m.isVault && cleanVaultPath(m.vaultPath) == path {
+		m.eyesOnly = true
+		m.mouseCapture = true
+	}
+	m.status = "eyes only enabled:" + path
+	m.err = ""
+	if err := m.renderTree(); err != nil {
+		m.err = err.Error()
+	}
+	if m.isVault && cleanVaultPath(m.vaultPath) == path {
+		return m, tea.EnableMouseCellMotion
+	}
+	return m, nil
 }
 
 func (m model) startImportSelectedToVault() (tea.Model, tea.Cmd) {
@@ -1851,6 +1974,7 @@ func (m *model) openDiskPath(path string) error {
 	m.vaultPath = ""
 	m.cwd = filepath.Dir(abs)
 	m.isVault = false
+	m.eyesOnly = false
 	m.vaultID = ""
 	m.expandTreeTo("file:" + abs)
 	m.editor.SetValue(string(b))
@@ -1893,10 +2017,17 @@ func (m *model) openVaultPath(path string) error {
 	m.diskPath = ""
 	m.vaultID = note.ID
 	m.isVault = true
+	m.eyesOnly = note.EyesOnly
+	if m.eyesOnly {
+		m.mouseCapture = true
+	}
 	m.expandTreeTo("vault:" + note.Path)
 	m.editor.SetValue(content)
 	m.dirty = false
 	m.status = "editing vault:" + note.Path
+	if m.eyesOnly {
+		m.status = "eyes only vault:" + note.Path
+	}
 	m.err = ""
 	m.setView(viewEdit)
 	m.renderPreview()
@@ -1943,6 +2074,7 @@ func (m *model) saveToVaultPath(path string) error {
 	m.vaultPath = path
 	m.filePath = path
 	m.isVault = true
+	m.eyesOnly = m.eyesOnlyPaths[cleanVaultPath(path)]
 	m.expandTreeTo("vault:" + path)
 	m.status = "saved vault:" + path
 	m.dirty = false
@@ -2003,8 +2135,12 @@ func (m *model) renderTree() error {
 		return err
 	}
 	vaultNotes := make([]string, 0, len(notes))
+	m.eyesOnlyPaths = map[string]bool{}
 	for _, note := range notes {
 		vaultNotes = append(vaultNotes, note.Path)
+		if note.EyesOnly {
+			m.eyesOnlyPaths[cleanVaultPath(note.Path)] = true
+		}
 	}
 	folders, err := m.store.ListFolders()
 	if err != nil {
@@ -2149,4 +2285,7 @@ func (m *model) resize() {
 	m.helpView.Width = contentWidth(m.styles.panel, m.width)
 	m.helpView.Height = contentHeight(m.styles.panel, innerH)
 	m.markdown.Resize(m.preview.Width)
+	if m.view == viewRender {
+		m.renderPreview()
+	}
 }

@@ -70,6 +70,7 @@ Useful environment overrides:
 - `n`: create a new folder from the tree
 - `d`: delete the selected file, note, or empty folder
 - `r`: rename or move the selected tree item by typing its new path
+- `o`: toggle Eyes Only on a vault note
 - `i`: import the selected filesystem file or folder into the encrypted vault
 - `ctrl+s`: save to the current target
 - `ctrl+v`: save to the encrypted vault
@@ -79,6 +80,8 @@ Useful environment overrides:
 - `ctrl+p`: ask the local model to insert a Markdown block
 - `ctrl+n`: new vault note
 - `ctrl+y`: toggle mouse capture off/on for terminal text selection
+- `alt+o`: toggle Eyes Only on the current vault note
+- `ctrl+k`: open the full command popup
 - `?` or `h`: open the full help screen
 - `pgup` / `pgdown`: page the focused tree, editor, or render pane
 - mouse wheel: scroll the tree or active writing surface
@@ -103,6 +106,18 @@ To pull existing surface files into the encrypted vault, select a `.md`, `.markd
 Long documents get simple navigation help. `pgup` / `pgdown` page through the current edit or render pane, `ctrl+g` jumps to a page number, and `ctrl+f` finds text from your current position.
 
 Copying text is deliberate. Mouse scrolling and terminal drag-selection fight over the same events, so press `ctrl+y` to turn mouse capture off, select/copy text from the editor or renderer with your terminal, then press `ctrl+y` again to restore mouse scrolling.
+
+## Eyes Only Mode
+
+Some notes belong in the vault, not lingering in your system clipboard. Eyes Only mode lets you lock down an encrypted note so it stays readable and editable, without becoming easy prey for an accidental text harvest.
+
+Hit `o` from the tree, or `alt+o` while the vault note is open. Eyes Only files glow high-alert orange in the tree, so you know exactly what you're dealing with before you hit enter.
+
+When an Eyes Only note is live, WeazlWrite hijacks terminal mouse capture and kills the `ctrl+y` selection toggle. You can read the file, grind out edits, and save it back to the encrypted vault, but you absolutely cannot switch into terminal drag-selection mode to copy blocks of text out.
+
+Dropping the shield requires actual intent. Press `o` or `alt+o` and explicitly confirm the warning prompt before the note returns to standard behavior.
+
+This isn't magic DRM, and it won't stop someone with a smartphone from taking a picture of your monitor. It's an anti-foot-gun mechanism for paranoid drafting: encrypted on the metal, visible when unlocked, and deliberately frustrating to casually copy.
 
 That split rail is the entire point: draft in the open when the code belongs in a repo, tuck private notes into the vault when they should not leave the bare metal.
 

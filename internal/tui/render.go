@@ -49,6 +49,8 @@ func (m model) View() string {
 		body = m.newFolderView()
 	} else if m.mode == modeConfirmDelete {
 		body = m.confirmDeleteView()
+	} else if m.mode == modeConfirmEyesOff {
+		body = m.confirmEyesOffView()
 	} else if m.mode == modeRenameTree {
 		body = m.renameTreeView()
 	} else if m.mode == modeHelp {
@@ -238,6 +240,23 @@ func (m model) confirmDeleteView() string {
 		Render(copy))
 }
 
+func (m model) confirmEyesOffView() string {
+	w := max(20, m.width)
+	popupWidth := min(82, max(32, w-4))
+	target := m.eyesOffTarget.path
+	if target == "" {
+		target = m.eyesOffTarget.name
+	}
+	copy := "Disable Eyes Only?\n\n" + target + "\n\n" + m.styles.help.Render("This re-enables terminal selection/copy for the note. enter/y confirms, esc/n cancels.")
+	return lipgloss.PlaceHorizontal(w, lipgloss.Center, lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(warningOrange).
+		Background(panel).
+		Padding(1, 2).
+		Width(max(1, popupWidth-6)).
+		Render(copy))
+}
+
 func (m model) renameTreeView() string {
 	w := max(20, m.width)
 	popupWidth := min(80, max(30, w-4))
@@ -299,7 +318,13 @@ func (m model) treeView(width, height int) string {
 		name = minString(name, max(1, width-2))
 		line := "  " + name
 		if i == m.treeIdx {
-			line = m.styles.sidebarSel.Render("> " + name)
+			if m.treeEntryEyesOnly(entry) {
+				line = m.styles.sidebarEyes.Render("> " + name)
+			} else {
+				line = m.styles.sidebarSel.Render("> " + name)
+			}
+		} else if m.treeEntryEyesOnly(entry) {
+			line = m.styles.sidebarEyes.Render(line)
 		} else if entry.isDir {
 			line = m.styles.sidebarDim.Render(line)
 		}
@@ -309,6 +334,10 @@ func (m model) treeView(width, height int) string {
 		}
 	}
 	return b.String()
+}
+
+func (m model) treeEntryEyesOnly(entry treeEntry) bool {
+	return entry.vault && !entry.isDir && m.eyesOnlyPaths[cleanVaultPath(entry.path)]
 }
 
 func (m model) treeEntryLabel(entry treeEntry) string {
@@ -365,6 +394,9 @@ func (m model) helpText() string {
 	if m.mode == modeConfirmDelete {
 		return "enter/y delete | esc/n cancel | ctrl+c quit"
 	}
+	if m.mode == modeConfirmEyesOff {
+		return "enter/y disable eyes only | esc/n cancel | ctrl+c quit"
+	}
 	if m.mode == modeRenameTree {
 		return "enter rename | esc cancel | ctrl+c quit"
 	}
@@ -396,8 +428,11 @@ func (m model) helpText() string {
 	if !m.mouseCapture {
 		mouse = "select:on"
 	}
-	treeHelp := "enter open/fold | space file/drop | n folder | r rename | d delete | i import | ? help"
-	return mode + " " + tree + " " + mouse + " | " + treeHelp + " | ^E edit | ^R render | ^O tree | ^Y select | ^S " + target + " | ^V vault | alt+F file | ^F find | ^G page | ^P AI | ^C"
+	eyes := ""
+	if m.eyesOnly {
+		eyes = " eyes-only"
+	}
+	return mode + eyes + " " + tree + " " + mouse + " | tab focus | enter open | ^S " + target + " | ^P AI | alt+O eyes | ^K commands | ^C"
 }
 
 func (m model) bodyHeight() int {
@@ -410,9 +445,24 @@ func (m model) layoutWidths() (treeW, mainW int) {
 	if !m.treeVisible {
 		return 0, innerW
 	}
-	treeW = min(30, max(18, innerW/4))
+	if m.focus == focusTree {
+		treeW = focusedTreeWidth(innerW)
+	} else {
+		treeW = compactTreeWidth(innerW)
+	}
 	mainW = max(1, innerW-treeW)
 	return treeW, mainW
+}
+
+func compactTreeWidth(innerW int) int {
+	return min(30, max(18, innerW/4))
+}
+
+func focusedTreeWidth(innerW int) int {
+	if innerW <= 34 {
+		return min(innerW-1, max(18, innerW-8))
+	}
+	return min(max(34, innerW*55/100), min(72, innerW-12))
 }
 
 func (m *model) renderHelp() {
@@ -435,7 +485,9 @@ Main writing
   ctrl+p              AI insert prompt. The generated Markdown block is inserted at the cursor.
   ctrl+o              Show or hide the tree.
   ctrl+y              Toggle mouse capture. Off means terminal drag-selection works for copying text.
-  ? or h              Open this help screen.
+  alt+o               Toggle eyes-only for the current vault note. Disabling asks for confirmation.
+  ctrl+k              Open this command screen.
+  ? or h              Open this command screen.
   ctrl+c              Quit.
 
 Tree
@@ -444,7 +496,10 @@ Tree
   n                   New folder at the selected location.
   d                   Delete the selected file, note, or empty folder.
   r                   Rename or move the selected entry by typing its new path.
+  o                   Toggle eyes-only on a vault note. Disabling asks for confirmation.
   space               Pick up the selected file/note; move to a destination folder; space again to drop.
+  i                   Import the selected filesystem file/folder into the vault.
+  pgup/pgdown         Page through the tree.
   esc                 Put down a picked-up entry and return focus to the writer.
 
 Vault and filesystem
@@ -457,6 +512,7 @@ Copying text
   Terminal mouse selection and app mouse scrolling compete for the same events.
   Press ctrl+y to turn mouse capture off, then select/copy text from edit or render with your terminal.
   Press ctrl+y again to restore mouse scrolling in the tree and panes.
+  Eyes-only vault notes keep mouse capture on so blocks cannot be copied out with terminal selection.
 
 Import
   Select a filesystem .md, .markdown, .txt, .pdf, or .docx file and press i to import it to the vault.

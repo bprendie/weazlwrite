@@ -28,6 +28,7 @@ type Note struct {
 	ID        string
 	Path      string
 	Title     string
+	EyesOnly  bool
 	UpdatedAt time.Time
 }
 
@@ -79,7 +80,7 @@ func (s *Store) Migrate() error {
 			return err
 		}
 	}
-	return nil
+	return s.ensureNoteColumns()
 }
 
 func (s *Store) HasVault() (bool, error) {
@@ -148,6 +149,28 @@ func (s *Store) DeleteNote(path string) error {
 	}
 	_, err := s.db.Exec(`delete from notes where path = ?`, path)
 	return err
+}
+
+func (s *Store) SetNoteEyesOnly(path string, eyesOnly bool) error {
+	if !s.unlocked {
+		return errors.New("vault is locked")
+	}
+	value := 0
+	if eyesOnly {
+		value = 1
+	}
+	result, err := s.db.Exec(`update notes set eyes_only = ?, updated_at = current_timestamp where path = ?`, value, cleanStorePath(path))
+	if err != nil {
+		return err
+	}
+	changed, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if changed == 0 {
+		return errors.New("vault note not found")
+	}
+	return nil
 }
 
 func (s *Store) RenameNote(oldPath, newPath string) error {
@@ -261,15 +284,17 @@ func (s *Store) LoadNote(path string) (Note, string, bool, error) {
 	if !s.unlocked {
 		return Note{}, "", false, errors.New("vault is locked")
 	}
-	row := s.db.QueryRow(`select id, path, title, nonce, ciphertext, updated_at from notes where path = ?`, path)
+	row := s.db.QueryRow(`select id, path, title, eyes_only, nonce, ciphertext, updated_at from notes where path = ?`, path)
 	var note Note
 	var nonce, ciphertext []byte
-	if err := row.Scan(&note.ID, &note.Path, &note.Title, &nonce, &ciphertext, &note.UpdatedAt); err != nil {
+	var eyesOnly any
+	if err := row.Scan(&note.ID, &note.Path, &note.Title, &eyesOnly, &nonce, &ciphertext, &note.UpdatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return Note{}, "", false, nil
 		}
 		return Note{}, "", false, err
 	}
+	note.EyesOnly = scanBool(eyesOnly)
 	plain, err := s.decrypt(nonce, ciphertext)
 	if err != nil {
 		return Note{}, "", false, err
@@ -278,7 +303,7 @@ func (s *Store) LoadNote(path string) (Note, string, bool, error) {
 }
 
 func (s *Store) ListNotes() ([]Note, error) {
-	rows, err := s.db.Query(`select id, path, title, updated_at from notes order by path collate nocase`)
+	rows, err := s.db.Query(`select id, path, title, eyes_only, updated_at from notes order by path collate nocase`)
 	if err != nil {
 		return nil, err
 	}
@@ -286,12 +311,42 @@ func (s *Store) ListNotes() ([]Note, error) {
 	var notes []Note
 	for rows.Next() {
 		var note Note
-		if err := rows.Scan(&note.ID, &note.Path, &note.Title, &note.UpdatedAt); err != nil {
+		var eyesOnly any
+		if err := rows.Scan(&note.ID, &note.Path, &note.Title, &eyesOnly, &note.UpdatedAt); err != nil {
 			return nil, err
 		}
+		note.EyesOnly = scanBool(eyesOnly)
 		notes = append(notes, note)
 	}
 	return notes, rows.Err()
+}
+
+func scanBool(value any) bool {
+	switch v := value.(type) {
+	case nil:
+		return false
+	case bool:
+		return v
+	case int64:
+		return v != 0
+	case int:
+		return v != 0
+	case []byte:
+		return scanBoolString(string(v))
+	case string:
+		return scanBoolString(v)
+	default:
+		return false
+	}
+}
+
+func scanBoolString(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "1", "true", "t", "yes", "y", "on":
+		return true
+	default:
+		return false
+	}
 }
 
 func (s *Store) ListFolders() ([]Folder, error) {
@@ -309,6 +364,40 @@ func (s *Store) ListFolders() ([]Folder, error) {
 		folders = append(folders, folder)
 	}
 	return folders, rows.Err()
+}
+
+func (s *Store) ensureNoteColumns() error {
+	rows, err := s.db.Query(`pragma table_info(notes)`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	hasEyesOnly := false
+	for rows.Next() {
+		var cid int
+		var name, typ string
+		var notNull int
+		var defaultValue any
+		var pk int
+		if err := rows.Scan(&cid, &name, &typ, &notNull, &defaultValue, &pk); err != nil {
+			return err
+		}
+		if name == "eyes_only" {
+			hasEyesOnly = true
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if !hasEyesOnly {
+		_, err := s.db.Exec(`alter table notes add column eyes_only integer not null default 0`)
+		return err
+	}
+	_, err = s.db.Exec(`update notes set eyes_only = case when lower(cast(eyes_only as text)) in ('1', 'true', 't', 'yes', 'y', 'on') then 1 else 0 end`)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Store) ensureFolderParents(path string) error {
