@@ -2,7 +2,9 @@
 
 ![WeazlWrite screenshot](weazlwrite.png)
 
-WeazlWrite is a private, local-first Markdown writing TUI for vLLM and Ollama servers. Think of it as a quiet terminal desk for drafts, docs, notes, and little technical spells, with an encrypted vault tucked under the floorboards. No web wrapper, no account portal, no tabs breeding in the background. Just your files, your vault, your model, and the blinking cursor.
+A sovereign text editor for a paranoid age. WeazlWrite is a private, local-first Markdown writing TUI for vLLM and Ollama servers. Think of it as a quiet terminal desk for drafts, docs, notes, and little technical spells, backed by an encrypted vault tucked under the floorboards.
+
+No web wrappers, no account portals, no telemetry drops, and no browser tabs breeding in the background. Just your files, your vaults, your models, and the blinking cursor.
 
 ## Defaults
 
@@ -14,7 +16,7 @@ On first launch, WeazlWrite drops a fresh `config.json` into `~/.config/weazlwri
 
 Because hardcoding endpoints into a writing tool is how tiny annoyances become permanent roommates, WeazlWrite reads the endpoint and model from the config at runtime.
 
-Encrypted vaults live under `~/.weazlwrite/vault`. Vault notes are stored in SQLite with password-protected vaults and AES-GCM encrypted payloads, but the TUI presents each vault as a filesystem-style tree. You can keep plain files on disk, encrypted notes in one or more vaults, or bounce a draft between both worlds.
+Encrypted vaults live under `~/.weazlwrite/vault`. Vault notes are stored in SQLite with password-protected vaults and AES-GCM encrypted payloads, but the TUI presents each vault as a standard filesystem tree. Keep plain files on disk, lock private notes in the vault, or bounce a draft between both worlds.
 
 ## Run
 
@@ -23,28 +25,28 @@ go run ./cmd/weazlwrite
 go run ./cmd/weazlwrite ./notes/example.md
 ```
 
-## Install
+## Grab The Source
 
 ```sh
 ./scripts/install.sh
 ```
 
-The installer takes care of the usual chores. It builds `weazlwrite`, tucks it into `~/.weazlwrite/bin`, and adds that directory to your shell `PATH` if it is not already present.
+No wizards. No corporate installers. The script handles the chores: it builds `weazlwrite`, tucks it into `~/.weazlwrite/bin`, and adds that directory to your shell `PATH`.
 
 During setup, you will be prompted for your provider type and URL. The script queries the provider for available models, writes `~/.config/weazlwrite/config.json`, and boots straight into the TUI.
 
-Provider URL rules: base URLs only, please.
+Provider URL rules: bare-metal base URLs only.
 
 - vLLM: `https://host:port` or `https://host`, without `/v1`
 - Ollama: `http://host:11434`, without `/api`
 
-If you accidentally paste the `/v1` or `/api` suffixes, the installer quietly fixes them for you.
+If you accidentally paste the `/v1` or `/api` suffixes, the installer quietly sanitizes them for you.
 
-Set `WEAZLWRITE_SKIP_LAUNCH=1` to install and configure without starting the TUI.
+Set `WEAZLWRITE_SKIP_LAUNCH=1` to install and configure without triggering the TUI.
 
 ## Build From Source
 
-WeazlWrite is a Go app, but it uses SQLite through `go-sqlite3`, so builds need Go 1.25 or newer, CGO, and a working C compiler. That is the one little bit of yak hair.
+WeazlWrite is a Go app, but it uses SQLite through `go-sqlite3`. Builds require Go 1.25 or newer, CGO, and a working C compiler. It is built to run on solid, reliable standards-based systems like Ubuntu LTS. That C compiler requirement is the one little bit of yak hair you have to shave.
 
 ```sh
 go build -o weazlwrite ./cmd/weazlwrite
@@ -83,43 +85,41 @@ Useful environment overrides:
 
 ## Vault And Files
 
-Each vault is encrypted SQLite, but it behaves like a note tree. Save something as `projects/specs/api.md`, and WeazlWrite shows it under `Vault / projects / specs / api.md`.
+Each vault is an encrypted SQLite database disguised as a note tree. Save something as `projects/specs/api.md`, and WeazlWrite displays it cleanly under `Vault / projects / specs / api.md`.
 
-On startup, WeazlWrite scans `~/.weazlwrite/vault` and shows a vault picker. Pick an existing vault, or press `n` to create a new named vault for a different context. New vaults require a matching password confirmation before the database is created. The selected vault path is remembered in your config, but the picker stays available every launch so switching contexts stays cheap.
+On startup, WeazlWrite scans `~/.weazlwrite/vault` and throws a vault picker. Pick an existing vault, or press `n` to spin up a new context. New vaults require password confirmation before the database is forged. The selected vault path locks into your config, but the picker stays available on launch so context switching stays cheap.
 
-The left rail has two roots: `Vault` for encrypted notes and `Files` for regular filesystem work. Folders fold and unfold with `enter`, and the active note gets a tiny marker so you can tell where you are without the tree turning into a blinking holiday display. A `*` means the current buffer has unsaved changes.
+The left rail splits your brain in two: `Vault` for the encrypted underground, and `Files` for regular surface-level filesystem work. The active note gets a tiny marker so you know exactly where you are without the tree turning into a blinking holiday display. A `*` means the current buffer has unsaved changes.
 
 Big directories are fine. Move with `j` / `k`, the arrow keys, `pgup` / `pgdown`, or the mouse wheel; the tree keeps the selected row in view instead of pretending the world ends at the bottom of the pane.
 
-Tree chores live right where your cursor already is. Press `n` for a new folder, `d` to delete a selected file or empty folder, and `r` to rename or move by path. Press `space` on a file or note to pick it up, move to another folder on the same side of the tree, then press `space` again to drop it there. Folders fold and unfold with `enter`.
+Tree chores happen right where your cursor is. Press `n` for a new folder, `d` to delete a selected file or empty folder, and `r` to rename or move. Press `space` to pick up a file, navigate, and press `space` again to drop it. Folders fold and unfold with `enter`.
 
 Press `ctrl+v` to save the current buffer into the encrypted vault. Press `alt+f` to save it out to the regular filesystem. Press `ctrl+s` when you simply want to save back to wherever the current note already lives.
 
-To bring existing notes into the encrypted vault, select a filesystem `.md`, `.markdown`, `.txt`, `.pdf`, or `.docx` file and press `i`. Select a filesystem folder and press `i` to bulk-import it as a vault root. Folder imports preserve relative paths, skip hidden entries, and work nicely for Obsidian vaults that already live on disk.
-
-PDF and DOCX imports are converted to pure Markdown before being encrypted and saved. Opening a PDF or DOCX from the file tree does the same thing: WeazlWrite converts it, saves the Markdown note in the vault, and opens that vault note. Image-only PDFs or image-only Word files cannot be imported because there is no selectable text to convert; WeazlWrite will warn you instead of creating an empty note.
+To pull existing surface files into the encrypted vault, select a `.md`, `.markdown`, `.txt`, `.pdf`, or `.docx` file and press `i`. Select a folder and press `i` to bulk-import it as a vault root, perfect for absorbing Obsidian vaults that already live on disk. Word and PDF files are aggressively stripped down and converted to pure Markdown before encryption. Image-only PDFs and image-only Word files are rejected because there is no text to harvest.
 
 Long documents get simple navigation help. `pgup` / `pgdown` page through the current edit or render pane, `ctrl+g` jumps to a page number, and `ctrl+f` finds text from your current position.
 
-That split is the point: draft in the open when the file belongs in a repo, tuck private notes into the vault when they should stay local and password-protected.
+That split rail is the entire point: draft in the open when the code belongs in a repo, tuck private notes into the vault when they should not leave the bare metal.
 
 ## Markdown And AI
 
-Edit mode is for writing. Render mode is for reading what you just wrote without Markdown syntax shouting over the prose. WeazlWrite uses Charmbracelet Glamour so headings, lists, code blocks, quotes, links, and tables keep their terminal-native shape without turning the app into a browser.
+Edit mode is for grinding out text. Render mode is for reading it back without syntax shouting over the prose. WeazlWrite is built on the beautiful Bubble Tea UI framework and uses Glamour so headings, code blocks, and tables keep their terminal-native shape without turning your TUI into a bloated browser.
 
-Need a block of generated Markdown? Press `ctrl+p`, describe what you want, and WeazlWrite asks your configured local model to generate just the insertable block. While the model works, Bubble spinner animations and rotating Weazl-style status phrases keep the screen alive so it does not feel like the terminal fell asleep at the wheel.
+Need a generated Markdown block? Press `ctrl+p`, describe the spell, and WeazlWrite hits your configured local model for the exact insertable text. While the model grinds, terminal spinners and rotating Weazl-style status phrases keep the screen alive so you know the hardware is working.
 
 ## Security
 
-WeazlWrite is local-first and privacy-minded, but it is still a small local app, not a hardware security module. The bcrypt password check and encrypted payloads are there to keep casual prying eyes out; they are not a promise that a weak password will survive a determined offline attack against your database.
+WeazlWrite is strictly local-first and built for paranoia, but it is a TUI app, not a hardware security module. The bcrypt checks and AES-GCM payloads exist to lock out casual snooping and keep your data sovereign. They are not a guarantee that a weak password will survive a dedicated offline attack if someone physically steals your rig.
 
 - Vault databases live locally under `~/.weazlwrite/vault`.
 - Vault payloads are encrypted with AES-GCM after unlock.
-- API keys, if you add them later, belong in your local config.
+- API keys belong in your local config, nowhere else.
 - Filesystem saves are plain files. Vault saves are encrypted records. Choose accordingly.
 
 ## License And Branding
 
-WeazlWrite is released under the MIT License. Use it, fork it, ship it, learn from it.
+WeazlWrite is released under the MIT License. Fork it, learn from it, ship it.
 
-The `WeazlWrite` name, screenshot, and project branding are part of this project identity. If you publish a substantially modified fork, please use a different name and visual branding so users can tell the projects apart.
+The `WeazlWrite` name, screenshot, and cyborg-ferret branding are part of this project's identity. If you publish a heavily modified fork, strip the branding and rename it so users know who is actually maintaining the code.
