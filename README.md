@@ -14,7 +14,7 @@ On first launch, WeazlWrite drops a fresh `config.json` into `~/.config/weazlwri
 
 Because hardcoding endpoints into a writing tool is how tiny annoyances become permanent roommates, WeazlWrite reads the endpoint and model from the config at runtime.
 
-The encrypted vault lives under `~/.weazlwrite/vault`. Vault notes are stored in SQLite with a password-protected vault and AES-GCM encrypted payloads, but the TUI presents them as a filesystem-style tree. You can keep plain files on disk, encrypted notes in the vault, or bounce a draft between both worlds.
+Encrypted vaults live under `~/.weazlwrite/vault`. Vault notes are stored in SQLite with password-protected vaults and AES-GCM encrypted payloads, but the TUI presents each vault as a filesystem-style tree. You can keep plain files on disk, encrypted notes in one or more vaults, or bounce a draft between both worlds.
 
 ## Run
 
@@ -58,28 +58,48 @@ Useful environment overrides:
 
 ## Keys
 
+- startup vault picker: `up` / `down` choose, `enter` opens, `n` creates a new vault
 - `ctrl+e`: edit mode
 - `ctrl+r`: rendered preview mode
 - `ctrl+o`: show or hide the file tree
 - `tab`: move between the file tree and the main writing surface
-- `space`: fold or unfold the selected tree folder
+- `enter`: open a selected file, or fold/unfold a selected folder
+- `space`: pick up a file or note; move to a folder; press `space` again to drop it
+- `n`: create a new folder from the tree
+- `d`: delete the selected file, note, or empty folder
+- `r`: rename or move the selected tree item by typing its new path
+- `i`: import the selected filesystem file or folder into the encrypted vault
 - `ctrl+s`: save to the current target
 - `ctrl+v`: save to the encrypted vault
-- `ctrl+f`: save to a filesystem path
+- `alt+f`: save to a filesystem path
+- `ctrl+f`: find text in the current pane
+- `ctrl+g`: jump to a page in the current pane
 - `ctrl+p`: ask the local model to insert a Markdown block
 - `ctrl+n`: new vault note
-- mouse wheel: scroll the active surface
+- `?` or `h`: open the full help screen
+- `pgup` / `pgdown`: page the focused tree, editor, or render pane
+- mouse wheel: scroll the tree or active writing surface
 - `ctrl+c`: quit
 
 ## Vault And Files
 
-The vault is encrypted SQLite, but it behaves like a note tree. Save something as `projects/specs/api.md`, and WeazlWrite shows it under `Vault / projects / specs / api.md`.
+Each vault is encrypted SQLite, but it behaves like a note tree. Save something as `projects/specs/api.md`, and WeazlWrite shows it under `Vault / projects / specs / api.md`.
 
-The left rail has two roots: `Vault` for encrypted notes and `Files` for regular filesystem work. Folders fold and unfold with `space`, and the active note gets a tiny marker so you can tell where you are without the tree turning into a blinking holiday display. A `*` means the current buffer has unsaved changes.
+On startup, WeazlWrite scans `~/.weazlwrite/vault` and shows a vault picker. Pick an existing vault, or press `n` to create a new named vault for a different context. New vaults require a matching password confirmation before the database is created. The selected vault path is remembered in your config, but the picker stays available every launch so switching contexts stays cheap.
 
-Big directories are fine. Move with `j` / `k`, the arrow keys, or the mouse wheel; the tree keeps the selected row in view instead of pretending the world ends at the bottom of the pane.
+The left rail has two roots: `Vault` for encrypted notes and `Files` for regular filesystem work. Folders fold and unfold with `enter`, and the active note gets a tiny marker so you can tell where you are without the tree turning into a blinking holiday display. A `*` means the current buffer has unsaved changes.
 
-Press `ctrl+v` to save the current buffer into the encrypted vault. Press `ctrl+f` to save it out to the regular filesystem. Press `ctrl+s` when you simply want to save back to wherever the current note already lives.
+Big directories are fine. Move with `j` / `k`, the arrow keys, `pgup` / `pgdown`, or the mouse wheel; the tree keeps the selected row in view instead of pretending the world ends at the bottom of the pane.
+
+Tree chores live right where your cursor already is. Press `n` for a new folder, `d` to delete a selected file or empty folder, and `r` to rename or move by path. Press `space` on a file or note to pick it up, move to another folder on the same side of the tree, then press `space` again to drop it there. Folders fold and unfold with `enter`.
+
+Press `ctrl+v` to save the current buffer into the encrypted vault. Press `alt+f` to save it out to the regular filesystem. Press `ctrl+s` when you simply want to save back to wherever the current note already lives.
+
+To bring existing notes into the encrypted vault, select a filesystem `.md`, `.markdown`, `.txt`, `.pdf`, or `.docx` file and press `i`. Select a filesystem folder and press `i` to bulk-import it as a vault root. Folder imports preserve relative paths, skip hidden entries, and work nicely for Obsidian vaults that already live on disk.
+
+PDF and DOCX imports are converted to pure Markdown before being encrypted and saved. Opening a PDF or DOCX from the file tree does the same thing: WeazlWrite converts it, saves the Markdown note in the vault, and opens that vault note. Image-only PDFs or image-only Word files cannot be imported because there is no selectable text to convert; WeazlWrite will warn you instead of creating an empty note.
+
+Long documents get simple navigation help. `pgup` / `pgdown` page through the current edit or render pane, `ctrl+g` jumps to a page number, and `ctrl+f` finds text from your current position.
 
 That split is the point: draft in the open when the file belongs in a repo, tuck private notes into the vault when they should stay local and password-protected.
 
@@ -93,7 +113,7 @@ Need a block of generated Markdown? Press `ctrl+p`, describe what you want, and 
 
 WeazlWrite is local-first and privacy-minded, but it is still a small local app, not a hardware security module. The bcrypt password check and encrypted payloads are there to keep casual prying eyes out; they are not a promise that a weak password will survive a determined offline attack against your database.
 
-- Vault notes live locally under `~/.weazlwrite/vault`.
+- Vault databases live locally under `~/.weazlwrite/vault`.
 - Vault payloads are encrypted with AES-GCM after unlock.
 - API keys, if you add them later, belong in your local config.
 - Filesystem saves are plain files. Vault saves are encrypted records. Choose accordingly.

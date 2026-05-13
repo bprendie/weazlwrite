@@ -122,21 +122,25 @@ func TestVaultTreeEntriesUseFilesystemStyleHierarchy(t *testing.T) {
 		"projects/specs/api.md",
 		"projects/readme.md",
 		"daily.md",
+	}, []string{
+		"projects/archive",
 	}, map[string]bool{
-		"vault:":               true,
-		"vault:projects":       true,
-		"vault:projects/specs": true,
+		"vault:":                 true,
+		"vault:projects":         true,
+		"vault:projects/archive": true,
+		"vault:projects/specs":   true,
 	})
 	got := make([]string, 0, len(entries))
 	for _, entry := range entries {
 		got = append(got, entry.id+" "+strings.Repeat("  ", entry.depth)+entry.name)
 	}
 	want := []string{
-		"vault:daily.md   daily.md",
 		"vault:projects   projects/",
-		"vault:projects/readme.md     readme.md",
+		"vault:projects/archive     archive/",
 		"vault:projects/specs     specs/",
 		"vault:projects/specs/api.md       api.md",
+		"vault:projects/readme.md     readme.md",
+		"vault:daily.md   daily.md",
 	}
 	if strings.Join(got, "\n") != strings.Join(want, "\n") {
 		t.Fatalf("vault tree:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))

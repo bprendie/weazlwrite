@@ -16,6 +16,9 @@ func (m model) View() string {
 	if m.dirty {
 		statusText += " *"
 	}
+	if m.mode == modeWrite {
+		statusText += fmt.Sprintf(" | page %d/%d", m.currentPage(), m.totalPages())
+	}
 	statusText = strings.ReplaceAll(statusText, "\n", " ")
 	statusText = minString(statusText, max(1, screenW))
 	status := ""
@@ -26,8 +29,14 @@ func (m model) View() string {
 	}
 
 	var body string
-	if m.mode == modeVault {
+	if m.mode == modeVaultPicker {
+		body = renderPanel(m.styles.panel, screenW, m.bodyHeight(), m.vaultPickerView())
+	} else if m.mode == modeVaultName {
+		body = m.vaultNameView()
+	} else if m.mode == modeVault {
 		body = renderPanel(m.styles.panel, screenW, m.bodyHeight(), "Encrypted markdown vault\n\n"+m.password.View())
+	} else if m.mode == modeVaultConfirm {
+		body = renderPanel(m.styles.panel, screenW, m.bodyHeight(), "Confirm encrypted markdown vault\n\n"+m.confirmPass.View())
 	} else if m.mode == modeAI {
 		body = m.aiPromptView()
 	} else if m.mode == modeGenerating {
@@ -36,6 +45,20 @@ func (m model) View() string {
 		body = m.saveFileView()
 	} else if m.mode == modeSaveVault {
 		body = m.saveVaultView()
+	} else if m.mode == modeNewFolder {
+		body = m.newFolderView()
+	} else if m.mode == modeConfirmDelete {
+		body = m.confirmDeleteView()
+	} else if m.mode == modeRenameTree {
+		body = m.renameTreeView()
+	} else if m.mode == modeHelp {
+		body = m.helpScreenView()
+	} else if m.mode == modeFind {
+		body = m.findView()
+	} else if m.mode == modeJumpPage {
+		body = m.jumpPageView()
+	} else if m.mode == modeImporting {
+		body = m.importingView()
 	} else {
 		body = m.writeView()
 	}
@@ -43,6 +66,50 @@ func (m model) View() string {
 	help := m.styles.help.Inline(true).MaxWidth(screenW).Render(m.helpText())
 	out := strings.Join([]string{header, status, body, help}, "\n")
 	return m.styles.frame.Width(screenW).Height(screenH).MaxWidth(screenW).MaxHeight(screenH).Render(out)
+}
+
+func (m model) vaultPickerView() string {
+	if len(m.vaults) == 0 {
+		return "Select vault\n\nNo vaults found.\n\nPress n to create a vault."
+	}
+	var b strings.Builder
+	b.WriteString("Select vault\n\n")
+	for i, vault := range m.vaults {
+		detail := vault.name
+		if !vault.exists {
+			detail += " (new default)"
+		}
+		line := "  " + detail
+		if i == m.vaultIdx {
+			line = m.styles.sidebarSel.Render("> " + detail)
+		}
+		b.WriteString(line)
+		b.WriteByte('\n')
+		pathLine := "    " + vault.path
+		if i == m.vaultIdx {
+			pathLine = m.styles.sidebarDim.Render(pathLine)
+		}
+		b.WriteString(pathLine)
+		if i != len(m.vaults)-1 {
+			b.WriteByte('\n')
+		}
+	}
+	b.WriteString("\n\n")
+	b.WriteString(m.styles.help.Render("enter selects, n creates a new vault"))
+	return b.String()
+}
+
+func (m model) vaultNameView() string {
+	w := max(20, m.width)
+	popupWidth := min(64, max(30, w-4))
+	copy := "New vault name:\n\n" + m.vaultName.View()
+	return lipgloss.PlaceHorizontal(w, lipgloss.Center, lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(neonCyan).
+		Background(panel).
+		Padding(1, 2).
+		Width(max(1, popupWidth-6)).
+		Render(copy))
 }
 
 func (m model) writeView() string {
@@ -92,6 +159,19 @@ func (m model) generatingView() string {
 		Render(copy))
 }
 
+func (m model) importingView() string {
+	w := max(20, m.width)
+	popupWidth := min(72, max(30, w-4))
+	copy := fmt.Sprintf("%s importing files into the vault", m.working.View())
+	return lipgloss.PlaceHorizontal(w, lipgloss.Center, lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(neonViolet).
+		Background(panel).
+		Padding(1, 2).
+		Width(max(1, popupWidth-6)).
+		Render(copy))
+}
+
 func (m model) thinkingPhrase() string {
 	if len(modelThinkingPhrases) == 0 || m.generatingAt.IsZero() {
 		return "model_is_thinking"
@@ -128,6 +208,82 @@ func (m model) saveVaultView() string {
 		Render(copy))
 }
 
+func (m model) newFolderView() string {
+	w := max(20, m.width)
+	popupWidth := min(80, max(30, w-4))
+	copy := "New folder:\n\n" + m.folderPrompt.View()
+	return lipgloss.PlaceHorizontal(w, lipgloss.Center, lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(neonCyan).
+		Background(panel).
+		Padding(1, 2).
+		Width(max(1, popupWidth-6)).
+		Render(copy))
+}
+
+func (m model) confirmDeleteView() string {
+	w := max(20, m.width)
+	popupWidth := min(80, max(30, w-4))
+	target := m.deleteTarget.path
+	if target == "" {
+		target = m.deleteTarget.name
+	}
+	copy := "Delete?\n\n" + target + "\n\n" + m.styles.help.Render("enter/y confirms, esc/n cancels")
+	return lipgloss.PlaceHorizontal(w, lipgloss.Center, lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(neonViolet).
+		Background(panel).
+		Padding(1, 2).
+		Width(max(1, popupWidth-6)).
+		Render(copy))
+}
+
+func (m model) renameTreeView() string {
+	w := max(20, m.width)
+	popupWidth := min(80, max(30, w-4))
+	copy := "Rename/move to:\n\n" + m.renamePrompt.View()
+	return lipgloss.PlaceHorizontal(w, lipgloss.Center, lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(neonCyan).
+		Background(panel).
+		Padding(1, 2).
+		Width(max(1, popupWidth-6)).
+		Render(copy))
+}
+
+func (m model) findView() string {
+	w := max(20, m.width)
+	popupWidth := min(80, max(30, w-4))
+	copy := "Find:\n\n" + m.findPrompt.View()
+	return lipgloss.PlaceHorizontal(w, lipgloss.Center, lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(neonCyan).
+		Background(panel).
+		Padding(1, 2).
+		Width(max(1, popupWidth-6)).
+		Render(copy))
+}
+
+func (m model) jumpPageView() string {
+	w := max(20, m.width)
+	popupWidth := min(52, max(30, w-4))
+	copy := fmt.Sprintf("Jump to page:\n\n%s\n\n%s", m.jumpPrompt.View(), m.styles.help.Render(fmt.Sprintf("Current document has %d pages.", m.totalPages())))
+	return lipgloss.PlaceHorizontal(w, lipgloss.Center, lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(neonViolet).
+		Background(panel).
+		Padding(1, 2).
+		Width(max(1, popupWidth-6)).
+		Render(copy))
+}
+
+func (m model) helpScreenView() string {
+	innerH := m.bodyHeight()
+	m.helpView.Height = contentHeight(m.styles.panel, innerH)
+	m.helpView.Width = contentWidth(m.styles.panel, m.width)
+	return renderPanel(m.styles.activePanel, m.width, innerH, m.helpView.View())
+}
+
 func (m model) treeView(width, height int) string {
 	if len(m.tree) == 0 {
 		return m.styles.sidebarDim.Render("empty")
@@ -159,6 +315,9 @@ func (m model) treeEntryLabel(entry treeEntry) string {
 	indent := strings.Repeat("  ", entry.depth)
 	current := entry.id == m.currentTreeID()
 	marker := " "
+	if m.carryTarget.id != "" && entry.id == m.carryTarget.id {
+		marker = ">"
+	}
 	if current {
 		marker = "•"
 		if m.dirty {
@@ -176,8 +335,17 @@ func (m model) treeEntryLabel(entry treeEntry) string {
 }
 
 func (m model) helpText() string {
+	if m.mode == modeVaultPicker {
+		return "up/down select | enter open | n new vault | ctrl+c quit"
+	}
+	if m.mode == modeVaultName {
+		return "enter create | esc cancel | ctrl+c quit"
+	}
 	if m.mode == modeVault {
 		return "enter unlock/create | ctrl+c quit"
+	}
+	if m.mode == modeVaultConfirm {
+		return "enter create | esc restart password | ctrl+c quit"
 	}
 	if m.mode == modeAI {
 		return "enter generate | esc cancel | ctrl+c quit"
@@ -191,6 +359,27 @@ func (m model) helpText() string {
 	if m.mode == modeSaveVault {
 		return "enter save encrypted | esc cancel | ctrl+c quit"
 	}
+	if m.mode == modeNewFolder {
+		return "enter create | esc cancel | ctrl+c quit"
+	}
+	if m.mode == modeConfirmDelete {
+		return "enter/y delete | esc/n cancel | ctrl+c quit"
+	}
+	if m.mode == modeRenameTree {
+		return "enter rename | esc cancel | ctrl+c quit"
+	}
+	if m.mode == modeHelp {
+		return "up/down scroll | pgup/pgdown | esc close | ctrl+c quit"
+	}
+	if m.mode == modeFind {
+		return "enter find next | esc cancel | ctrl+c quit"
+	}
+	if m.mode == modeJumpPage {
+		return "enter jump | esc cancel | ctrl+c quit"
+	}
+	if m.mode == modeImporting {
+		return "importing in background | ctrl+c quit"
+	}
 	target := "vault"
 	if !m.isVault && m.filePath != "" {
 		target = fmt.Sprintf("disk:%s", m.filePath)
@@ -203,7 +392,8 @@ func (m model) helpText() string {
 	if !m.treeVisible {
 		tree = "tree:off"
 	}
-	return mode + " " + tree + " | space fold | ^E edit | ^R render | ^O tree | ^S " + target + " | ^V vault | ^F file | ^P AI | ^C"
+	treeHelp := "enter open/fold | space file/drop | n folder | r rename | d delete | i import | ? help"
+	return mode + " " + tree + " | " + treeHelp + " | ^E edit | ^R render | ^O tree | ^S " + target + " | ^V vault | alt+F file | ^F find | ^G page | ^P AI | ^C"
 }
 
 func (m model) bodyHeight() int {
@@ -219,6 +409,57 @@ func (m model) layoutWidths() (treeW, mainW int) {
 	treeW = min(30, max(18, innerW/4))
 	mainW = max(1, innerW-treeW)
 	return treeW, mainW
+}
+
+func (m *model) renderHelp() {
+	if m.helpView.Width <= 0 {
+		m.helpView.Width = max(20, contentWidth(m.styles.panel, m.width))
+	}
+	m.helpView.SetContent(strings.TrimSpace(`
+WeazlWrite help
+
+Main writing
+  tab                 Move between the editor/render pane and the tree.
+  ctrl+e              Edit mode.
+  ctrl+r              Render mode.
+  ctrl+s              Save to the current target.
+  ctrl+v              Save to: encrypted vault.
+  alt+f               Save to: filesystem.
+  ctrl+f              Find text in the current edit/render pane.
+  ctrl+g              Jump to a page in the current edit/render pane.
+  ctrl+n              New untitled vault note.
+  ctrl+p              AI insert prompt. The generated Markdown block is inserted at the cursor.
+  ctrl+o              Show or hide the tree.
+  ? or h              Open this help screen.
+  ctrl+c              Quit.
+
+Tree
+  up/down or k/j      Move selection.
+  enter               Open a file/note, or fold/unfold a folder.
+  n                   New folder at the selected location.
+  d                   Delete the selected file, note, or empty folder.
+  r                   Rename or move the selected entry by typing its new path.
+  space               Pick up the selected file/note; move to a destination folder; space again to drop.
+  esc                 Put down a picked-up entry and return focus to the writer.
+
+Vault and filesystem
+  Vault entries live inside the encrypted SQLite vault at ~/.weazlwrite/vault.
+  Files entries are regular files from the current filesystem folder.
+  Moving with space/drop stays inside the same side: vault-to-vault or filesystem-to-filesystem.
+  To copy content between sides, use Save to: vault/filesystem or import.
+
+Import
+  Select a filesystem .md, .markdown, .txt, .pdf, or .docx file and press i to import it to the vault.
+  Select a filesystem folder and press i to bulk-import it as a vault root.
+  Folder imports preserve relative paths, skip hidden folders/files, and are meant for Obsidian-style vaults.
+  PDF and DOCX imports are converted to pure Markdown before they are encrypted and saved.
+  Image-only PDFs or image-only Word docs cannot be imported because there is no selectable text to convert.
+  Existing vault paths are updated in place.
+
+Prompts
+  enter confirms.
+  esc cancels.
+`))
 }
 
 func renderPanel(style lipgloss.Style, outerW, outerH int, content string) string {

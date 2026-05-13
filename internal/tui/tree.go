@@ -16,11 +16,11 @@ type treeEntry struct {
 	depth int
 }
 
-func readTree(dir string, vaultNotes []string, expanded map[string]bool) ([]treeEntry, error) {
+func readTree(dir string, vaultNotes []string, vaultFolders []string, expanded map[string]bool) ([]treeEntry, error) {
 	var entries []treeEntry
 	entries = append(entries, treeEntry{name: "Vault", id: "vault:", isDir: true, vault: true})
 	if expanded["vault:"] {
-		entries = append(entries, vaultTreeEntries(vaultNotes, expanded)...)
+		entries = append(entries, vaultTreeEntries(vaultNotes, vaultFolders, expanded)...)
 	}
 
 	entries = append(entries, treeEntry{name: "Files", path: dir, id: "file:", isDir: true})
@@ -64,68 +64,121 @@ func fileTreeEntries(dir string, depth int, expanded map[string]bool) ([]treeEnt
 			}
 			continue
 		}
-		ext := strings.ToLower(filepath.Ext(name))
-		if ext == ".md" || ext == ".markdown" || ext == ".txt" {
+		if isTreeFile(name) {
 			entries = append(entries, treeEntry{name: name, path: path, id: "file:" + path, depth: depth})
 		}
 	}
 	return entries, nil
 }
 
-func vaultTreeEntries(notes []string, expanded map[string]bool) []treeEntry {
-	sort.Slice(notes, func(i, j int) bool {
-		return strings.ToLower(notes[i]) < strings.ToLower(notes[j])
-	})
-	seenDirs := map[string]bool{}
-	hiddenDir := map[string]bool{}
-	var entries []treeEntry
+func isTreeFile(name string) bool {
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".md", ".markdown", ".txt", ".pdf", ".docx", ".doc":
+		return true
+	default:
+		return false
+	}
+}
+
+func vaultTreeEntries(notes []string, folders []string, expanded map[string]bool) []treeEntry {
+	noteSet := map[string]bool{}
+	folderSet := map[string]bool{}
 	for _, note := range notes {
 		clean := cleanVaultPath(note)
 		if clean == "" {
 			continue
 		}
-		parts := strings.Split(clean, "/")
-		var prefix []string
-		hidden := false
-		for i := 0; i < len(parts)-1; i++ {
-			prefix = append(prefix, parts[i])
-			path := strings.Join(prefix, "/")
-			if hidden || hiddenDir[path] {
-				hidden = true
-				continue
-			}
-			if seenDirs[path] {
-				if !expanded["vault:"+path] {
-					hidden = true
-				}
-				continue
-			}
-			seenDirs[path] = true
-			entries = append(entries, treeEntry{
-				name:  parts[i] + "/",
-				path:  path + "/",
-				id:    "vault:" + path,
-				isDir: true,
-				vault: true,
-				depth: i + 1,
-			})
-			if !expanded["vault:"+path] {
-				hidden = true
-				hiddenDir[path] = true
-			}
-		}
-		if hidden {
+		noteSet[clean] = true
+		addVaultParents(clean, folderSet)
+	}
+	for _, folder := range folders {
+		clean := cleanVaultPath(folder)
+		if clean == "" {
 			continue
 		}
+		folderSet[clean] = true
+		addVaultParents(clean, folderSet)
+	}
+	return vaultTreeChildren("", 1, noteSet, folderSet, expanded)
+}
+
+func vaultTreeChildren(parent string, depth int, notes, folders map[string]bool, expanded map[string]bool) []treeEntry {
+	dirSet := map[string]string{}
+	var files []string
+	for folder := range folders {
+		if vaultParent(folder) == parent {
+			dirSet[vaultBase(folder)] = folder
+		}
+	}
+	for note := range notes {
+		if vaultParent(note) == parent {
+			files = append(files, note)
+		}
+	}
+	dirNames := make([]string, 0, len(dirSet))
+	for name := range dirSet {
+		dirNames = append(dirNames, name)
+	}
+	sort.Slice(dirNames, func(i, j int) bool {
+		return strings.ToLower(dirNames[i]) < strings.ToLower(dirNames[j])
+	})
+	sort.Slice(files, func(i, j int) bool {
+		return strings.ToLower(files[i]) < strings.ToLower(files[j])
+	})
+
+	var entries []treeEntry
+	for _, name := range dirNames {
+		path := dirSet[name]
+		id := "vault:" + path
 		entries = append(entries, treeEntry{
-			name:  parts[len(parts)-1],
-			path:  clean,
-			id:    "vault:" + clean,
+			name:  name + "/",
+			path:  path,
+			id:    id,
+			isDir: true,
 			vault: true,
-			depth: len(parts),
+			depth: depth,
+		})
+		if expanded[id] {
+			entries = append(entries, vaultTreeChildren(path, depth+1, notes, folders, expanded)...)
+		}
+	}
+	for _, note := range files {
+		entries = append(entries, treeEntry{
+			name:  vaultBase(note),
+			path:  note,
+			id:    "vault:" + note,
+			vault: true,
+			depth: depth,
 		})
 	}
 	return entries
+}
+
+func addVaultParents(path string, folders map[string]bool) {
+	parent := vaultParent(path)
+	for parent != "" {
+		folders[parent] = true
+		parent = vaultParent(parent)
+	}
+}
+
+func vaultParent(path string) string {
+	path = cleanVaultPath(path)
+	if path == "" || !strings.Contains(path, "/") {
+		return ""
+	}
+	return path[:strings.LastIndex(path, "/")]
+}
+
+func vaultBase(path string) string {
+	path = strings.TrimSuffix(cleanVaultPath(path), "/")
+	if path == "" {
+		return ""
+	}
+	if idx := strings.LastIndex(path, "/"); idx >= 0 {
+		return path[idx+1:]
+	}
+	return path
 }
 
 func cleanVaultPath(path string) string {
