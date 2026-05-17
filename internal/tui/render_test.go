@@ -146,3 +146,88 @@ func TestVaultTreeEntriesUseFilesystemStyleHierarchy(t *testing.T) {
 		t.Fatalf("vault tree:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
 	}
 }
+
+func TestReadTreePreservesRootsAndEyesOnlyLookup(t *testing.T) {
+	entries, err := readTree(t.TempDir(), []string{"private/plan.md"}, []string{"private"}, map[string]bool{
+		"vault:":        true,
+		"vault:private": true,
+		"file:":         true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) < 3 {
+		t.Fatalf("entries = %d, want roots and vault children", len(entries))
+	}
+	if entries[0].id != "vault:" || !entries[0].vault || !entries[0].isDir {
+		t.Fatalf("first entry = %+v, want vault root", entries[0])
+	}
+	foundFilesRoot := false
+	foundEyesOnly := false
+	m := model{eyesOnlyPaths: map[string]bool{"private/plan.md": true}}
+	for _, entry := range entries {
+		if entry.id == "file:" && entry.isDir {
+			foundFilesRoot = true
+		}
+		if entry.id == "vault:private/plan.md" {
+			foundEyesOnly = m.treeEntryEyesOnly(entry)
+		}
+	}
+	if !foundFilesRoot {
+		t.Fatal("missing filesystem root")
+	}
+	if !foundEyesOnly {
+		t.Fatal("vault note did not resolve as eyes-only")
+	}
+}
+
+func TestSelectionBoundsExcludeTreeAndSelectedTextExcludesLineNumbers(t *testing.T) {
+	editor := textarea.New()
+	editor.SetValue("alpha\nbeta\ngamma")
+	m := model{
+		styles:      newStyles(),
+		mode:        modeWrite,
+		focus:       focusEditor,
+		view:        viewEdit,
+		treeVisible: true,
+		width:       100,
+		height:      24,
+		editor:      editor,
+		preview:     viewport.New(0, 0),
+	}
+	m.resize()
+	contentX, contentY, _, _ := m.mainContentBounds()
+	if _, ok := m.selectionRowAt(1, contentY); ok {
+		t.Fatal("selection row accepted x inside tree")
+	}
+	row, ok := m.selectionRowAt(contentX, contentY+1)
+	if !ok {
+		t.Fatal("selection row rejected x inside writing pane")
+	}
+	if row != 1 {
+		t.Fatalf("selection row = %d, want 1", row)
+	}
+	m.selectStart = selectPoint{row: 0}
+	m.selectEnd = selectPoint{row: 1}
+	if got := m.selectedText(); got != "alpha\nbeta" {
+		t.Fatalf("selectedText = %q, want editor content without line numbers", got)
+	}
+}
+
+func TestLayoutWidthsForTreeStates(t *testing.T) {
+	m := model{width: 100, height: 24, styles: newStyles(), treeVisible: true, focus: focusEditor}
+	treeW, mainW := m.layoutWidths()
+	if treeW != 25 || mainW != 75 {
+		t.Fatalf("compact layout = %d/%d, want 25/75", treeW, mainW)
+	}
+	m.focus = focusTree
+	treeW, mainW = m.layoutWidths()
+	if treeW != 55 || mainW != 45 {
+		t.Fatalf("focused layout = %d/%d, want 55/45", treeW, mainW)
+	}
+	m.treeVisible = false
+	treeW, mainW = m.layoutWidths()
+	if treeW != 0 || mainW != 100 {
+		t.Fatalf("hidden tree layout = %d/%d, want 0/100", treeW, mainW)
+	}
+}
