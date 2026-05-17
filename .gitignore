@@ -4,3 +4,4 @@
 /weazlwrite-setup
 *.sqlite3
 *.sqlite3-*
+MODULARIZATION_PLAN.local.md
