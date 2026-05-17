@@ -837,15 +837,20 @@ func (m model) toggleMouseCapture() (tea.Model, tea.Cmd) {
 	if m.eyesOnly {
 		m.mouseCapture = true
 		m.err = "eyes only notes keep copy protection on"
-		return m, tea.EnableMouseCellMotion
+		m.resize()
+		return m, tea.Batch(tea.EnableMouseCellMotion, tea.ClearScreen)
 	}
 	m.mouseCapture = !m.mouseCapture
 	if m.mouseCapture {
 		m.status = "mouse capture on"
-		return m, tea.EnableMouseCellMotion
+		m.err = ""
+		m.resize()
+		return m, tea.Batch(tea.EnableMouseCellMotion, tea.ClearScreen)
 	}
-	m.status = "mouse capture off; terminal selection enabled"
-	return m, tea.DisableMouse
+	m.status = "text selection on"
+	m.err = ""
+	m.resize()
+	return m, tea.Batch(tea.DisableMouse, tea.ClearScreen)
 }
 
 func (m model) focusAtX(x int) focus {
@@ -2278,6 +2283,7 @@ func (m *model) renderPreview() {
 func (m *model) resize() {
 	innerH := m.bodyHeight()
 	_, mainW := m.layoutWidths()
+	m.editor.ShowLineNumbers = m.mouseCapture
 	m.editor.SetWidth(contentWidth(m.styles.panel, mainW))
 	m.editor.SetHeight(contentHeight(m.styles.panel, innerH))
 	m.preview.Width = contentWidth(m.styles.panel, mainW)
