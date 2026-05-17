@@ -61,6 +61,10 @@ const (
 	viewRender
 )
 
+type selectPoint struct {
+	row int
+}
+
 type model struct {
 	cfg           config.Config
 	cfgPath       string
@@ -107,6 +111,11 @@ type model struct {
 	vaultID       string
 	isVault       bool
 	eyesOnly      bool
+	selectionMode bool
+	selecting     bool
+	selectOffset  int
+	selectStart   selectPoint
+	selectEnd     selectPoint
 	dirty         bool
 	aiBusy        bool
 	generatingAt  time.Time
@@ -720,6 +729,13 @@ func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 	case "esc":
+		if m.selectionMode {
+			m.selectionMode = false
+			m.selecting = false
+			m.status = "selection mode off"
+			m.resize()
+			return m, tea.ClearScreen
+		}
 		m.setMainFocus()
 		return m, nil
 	}
@@ -728,6 +744,9 @@ func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.updateTree(msg)
 	}
 	if m.view == viewEdit && m.focus == focusEditor {
+		if m.selectionMode {
+			return m, nil
+		}
 		before := m.editor.Value()
 		var cmd tea.Cmd
 		m.editor, cmd = m.editor.Update(msg)
@@ -747,6 +766,9 @@ func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m model) updateMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	mouse := tea.MouseEvent(msg)
+	if m.selectionMode {
+		return m.updateSelectionMouse(mouse)
+	}
 	if msg.Action == tea.MouseActionPress && !mouse.IsWheel() {
 		m.setFocus(m.focusAtX(msg.X))
 		return m, nil
@@ -835,22 +857,27 @@ func (m *model) toggleTree() {
 
 func (m model) toggleMouseCapture() (tea.Model, tea.Cmd) {
 	if m.eyesOnly {
+		m.selectionMode = false
+		m.selecting = false
 		m.mouseCapture = true
 		m.err = "eyes only notes keep copy protection on"
 		m.resize()
 		return m, tea.Batch(tea.EnableMouseCellMotion, tea.ClearScreen)
 	}
-	m.mouseCapture = !m.mouseCapture
-	if m.mouseCapture {
-		m.status = "mouse capture on"
+	m.selectionMode = !m.selectionMode
+	m.selecting = false
+	m.mouseCapture = true
+	if !m.selectionMode {
+		m.status = "selection mode off"
 		m.err = ""
 		m.resize()
 		return m, tea.Batch(tea.EnableMouseCellMotion, tea.ClearScreen)
 	}
-	m.status = "text selection on"
+	m.initSelectionOffset()
+	m.status = "selection mode: drag in the writing pane; release copies"
 	m.err = ""
 	m.resize()
-	return m, tea.Batch(tea.DisableMouse, tea.ClearScreen)
+	return m, tea.Batch(tea.EnableMouseCellMotion, tea.ClearScreen)
 }
 
 func (m model) focusAtX(x int) focus {
@@ -2283,7 +2310,7 @@ func (m *model) renderPreview() {
 func (m *model) resize() {
 	innerH := m.bodyHeight()
 	_, mainW := m.layoutWidths()
-	m.editor.ShowLineNumbers = m.mouseCapture
+	m.editor.ShowLineNumbers = !m.selectionMode
 	m.editor.SetWidth(contentWidth(m.styles.panel, mainW))
 	m.editor.SetHeight(contentHeight(m.styles.panel, innerH))
 	m.preview.Width = contentWidth(m.styles.panel, mainW)

@@ -127,6 +127,9 @@ func (m model) writeView() string {
 	if m.view == viewRender {
 		mainContent = m.preview.View()
 	}
+	if m.selectionMode {
+		mainContent = m.selectionView(contentWidth(m.styles.activePanel, mainW), contentHeight(m.styles.activePanel, innerH))
+	}
 	main := renderPanel(m.styles.activePanel, mainW, innerH, mainContent)
 	if !m.treeVisible {
 		return main
@@ -382,6 +385,9 @@ func (m model) helpText() string {
 	if m.mode == modeGenerating {
 		return "waiting for local model | ctrl+c quit"
 	}
+	if m.mode == modeWrite && m.selectionMode {
+		return "selection mode | drag in writing pane to copy | esc/^Y cancel | ctrl+c quit"
+	}
 	if m.mode == modeSaveFile {
 		return "enter save | esc cancel | ctrl+c quit"
 	}
@@ -425,7 +431,7 @@ func (m model) helpText() string {
 		tree = "tree:off"
 	}
 	mouse := "mouse:on"
-	if !m.mouseCapture {
+	if m.selectionMode {
 		mouse = "select:on"
 	}
 	eyes := ""
