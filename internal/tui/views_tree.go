@@ -1,6 +1,10 @@
 package tui
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/charmbracelet/lipgloss"
+)
 
 func (m model) treeView(width, height int) string {
 	if len(m.tree) == 0 {
@@ -15,7 +19,7 @@ func (m model) treeView(width, height int) string {
 		entry := m.tree[i]
 		name := m.treeEntryLabel(entry)
 		name = minString(name, max(1, width-2))
-		line := "  " + name
+		line := m.treeEntryStyle(entry, false).Render("  " + name)
 		if i == m.treeIdx {
 			if m.treeEntryEyesOnly(entry) {
 				line = m.styles.sidebarEyes.Render("> " + name)
@@ -23,9 +27,9 @@ func (m model) treeView(width, height int) string {
 				line = m.styles.sidebarSel.Render("> " + name)
 			}
 		} else if m.treeEntryEyesOnly(entry) {
-			line = m.styles.sidebarEyes.Render(line)
+			line = m.styles.sidebarEyes.Render("  " + name)
 		} else if entry.isDir {
-			line = m.styles.sidebarDim.Render(line)
+			line = m.treeEntryStyle(entry, false).Render("  " + name)
 		}
 		b.WriteString(line)
 		if i != len(m.tree)-1 && row != height-1 {
@@ -33,6 +37,19 @@ func (m model) treeView(width, height int) string {
 		}
 	}
 	return b.String()
+}
+
+func (m model) treeEntryStyle(entry treeEntry, selected bool) lipgloss.Style {
+	if selected {
+		return m.styles.sidebarSel
+	}
+	if entry.id == "vault:" || entry.id == "file:" {
+		return m.styles.treeRoot
+	}
+	if entry.isDir {
+		return m.styles.treeFolder
+	}
+	return m.styles.treeFile
 }
 
 func (m model) treeEntryEyesOnly(entry treeEntry) bool {

@@ -23,11 +23,19 @@ type styles struct {
 	panel       lipgloss.Style
 	activePanel lipgloss.Style
 	status      lipgloss.Style
+	statusBar   lipgloss.Style
+	statusMode  lipgloss.Style
+	statusDirty lipgloss.Style
+	statusPath  lipgloss.Style
 	help        lipgloss.Style
+	helpKey     lipgloss.Style
 	sidebar     lipgloss.Style
 	sidebarSel  lipgloss.Style
 	sidebarDim  lipgloss.Style
 	sidebarEyes lipgloss.Style
+	treeRoot    lipgloss.Style
+	treeFolder  lipgloss.Style
+	treeFile    lipgloss.Style
 	editor      lipgloss.Style
 	preview     lipgloss.Style
 	error       lipgloss.Style
@@ -54,8 +62,27 @@ func newStyles() styles {
 		status: lipgloss.NewStyle().
 			Foreground(neonCyan).
 			Bold(true),
+		statusBar: lipgloss.NewStyle().
+			Foreground(ink).
+			Background(panelAlt),
+		statusMode: lipgloss.NewStyle().
+			Foreground(void).
+			Background(neonCyan).
+			Bold(true).
+			Padding(0, 1),
+		statusDirty: lipgloss.NewStyle().
+			Foreground(void).
+			Background(warningOrange).
+			Bold(true).
+			Padding(0, 1),
+		statusPath: lipgloss.NewStyle().
+			Foreground(neonViolet).
+			Bold(true),
 		help: lipgloss.NewStyle().
 			Foreground(muted),
+		helpKey: lipgloss.NewStyle().
+			Foreground(neonCyan).
+			Bold(true),
 		sidebar: lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder()).
 			BorderForeground(border).
@@ -69,6 +96,13 @@ func newStyles() styles {
 		sidebarEyes: lipgloss.NewStyle().
 			Foreground(warningOrange).
 			Bold(true),
+		treeRoot: lipgloss.NewStyle().
+			Foreground(neonCyan).
+			Bold(true),
+		treeFolder: lipgloss.NewStyle().
+			Foreground(neonViolet),
+		treeFile: lipgloss.NewStyle().
+			Foreground(ink),
 		editor: lipgloss.NewStyle().
 			Foreground(ink).
 			Background(panel),
