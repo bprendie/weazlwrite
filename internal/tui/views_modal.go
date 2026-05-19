@@ -2,61 +2,26 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
 )
 
 func (m model) vaultNameView() string {
-	w := max(20, m.width)
-	popupWidth := min(64, max(30, w-4))
-	copy := "New vault name:\n\n" + m.vaultName.View()
-	return lipgloss.PlaceHorizontal(w, lipgloss.Center, lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(neonCyan).
-		Background(panel).
-		Padding(1, 2).
-		Width(max(1, popupWidth-6)).
-		Render(copy))
+	return m.modalView("New vault name", m.vaultName.View(), "", neonCyan, 64)
 }
 
 func (m model) aiPromptView() string {
-	w := max(20, m.width)
-	popupWidth := min(76, max(30, w-4))
-	copy := "AI insert prompt\n\n" + m.aiPrompt.View() + "\n\n" + m.styles.help.Render("The generated Markdown block will be inserted at the editor cursor.")
-	return lipgloss.PlaceHorizontal(w, lipgloss.Center, lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(neonCyan).
-		Background(panel).
-		Padding(1, 2).
-		Width(max(1, popupWidth-6)).
-		Render(copy))
+	return m.modalView("AI insert prompt", m.aiPrompt.View(), "The generated Markdown block will be inserted at the editor cursor.", neonCyan, 76)
 }
 
 func (m model) generatingView() string {
-	w := max(20, m.width)
-	popupWidth := min(60, max(30, w-4))
-	copy := fmt.Sprintf("%s %s", m.working.View(), m.thinkingPhrase())
-	return lipgloss.PlaceHorizontal(w, lipgloss.Center, lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(neonViolet).
-		Background(panel).
-		Padding(1, 2).
-		Width(max(1, popupWidth-6)).
-		Render(copy))
+	return m.modalView("AI generating", fmt.Sprintf("%s %s", m.working.View(), m.thinkingPhrase()), "", neonViolet, 60)
 }
 
 func (m model) importingView() string {
-	w := max(20, m.width)
-	popupWidth := min(72, max(30, w-4))
-	copy := fmt.Sprintf("%s importing files into the vault", m.working.View())
-	return lipgloss.PlaceHorizontal(w, lipgloss.Center, lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(neonViolet).
-		Background(panel).
-		Padding(1, 2).
-		Width(max(1, popupWidth-6)).
-		Render(copy))
+	return m.modalView("Vault import", fmt.Sprintf("%s importing files into the vault", m.working.View()), "", neonViolet, 72)
 }
 
 func (m model) thinkingPhrase() string {
@@ -70,42 +35,15 @@ func (m model) thinkingPhrase() string {
 }
 
 func (m model) saveFileView() string {
-	w := max(20, m.width)
-	popupWidth := min(80, max(30, w-4))
-	copy := "Save to:\n\n" + m.filePrompt.View()
-	return lipgloss.PlaceHorizontal(w, lipgloss.Center, lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(neonCyan).
-		Background(panel).
-		Padding(1, 2).
-		Width(max(1, popupWidth-6)).
-		Render(copy))
+	return m.modalView("Save to filesystem", m.filePrompt.View(), "", neonCyan, 80)
 }
 
 func (m model) saveVaultView() string {
-	w := max(20, m.width)
-	popupWidth := min(80, max(30, w-4))
-	copy := "Save to:\n\n" + m.vaultPrompt.View()
-	return lipgloss.PlaceHorizontal(w, lipgloss.Center, lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(neonViolet).
-		Background(panel).
-		Padding(1, 2).
-		Width(max(1, popupWidth-6)).
-		Render(copy))
+	return m.modalView("Save to encrypted vault", m.vaultPrompt.View(), "", neonViolet, 80)
 }
 
 func (m model) newFolderView() string {
-	w := max(20, m.width)
-	popupWidth := min(80, max(30, w-4))
-	copy := "New folder:\n\n" + m.folderPrompt.View()
-	return lipgloss.PlaceHorizontal(w, lipgloss.Center, lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(neonCyan).
-		Background(panel).
-		Padding(1, 2).
-		Width(max(1, popupWidth-6)).
-		Render(copy))
+	return m.modalView("New folder", m.folderPrompt.View(), "", neonCyan, 80)
 }
 
 func (m model) confirmDeleteView() string {
@@ -115,10 +53,10 @@ func (m model) confirmDeleteView() string {
 	if target == "" {
 		target = m.deleteTarget.name
 	}
-	copy := "Delete?\n\n" + target + "\n\n" + m.styles.help.Render("enter/y confirms, esc/n cancels")
+	copy := m.modalContent("Delete?", target, "enter/y confirms, esc/n cancels", warningOrange, max(1, popupWidth-6))
 	return lipgloss.PlaceHorizontal(w, lipgloss.Center, lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(neonViolet).
+		BorderForeground(warningOrange).
 		Background(panel).
 		Padding(1, 2).
 		Width(max(1, popupWidth-6)).
@@ -132,7 +70,7 @@ func (m model) confirmEyesOffView() string {
 	if target == "" {
 		target = m.eyesOffTarget.name
 	}
-	copy := "Disable Eyes Only?\n\n" + target + "\n\n" + m.styles.help.Render("This re-enables terminal selection/copy for the note. enter/y confirms, esc/n cancels.")
+	copy := m.modalContent("Disable Eyes Only?", target, "This re-enables terminal selection/copy for the note. enter/y confirms, esc/n cancels.", warningOrange, max(1, popupWidth-6))
 	return lipgloss.PlaceHorizontal(w, lipgloss.Center, lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(warningOrange).
@@ -143,40 +81,41 @@ func (m model) confirmEyesOffView() string {
 }
 
 func (m model) renameTreeView() string {
-	w := max(20, m.width)
-	popupWidth := min(80, max(30, w-4))
-	copy := "Rename/move to:\n\n" + m.renamePrompt.View()
-	return lipgloss.PlaceHorizontal(w, lipgloss.Center, lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(neonCyan).
-		Background(panel).
-		Padding(1, 2).
-		Width(max(1, popupWidth-6)).
-		Render(copy))
+	return m.modalView("Rename or move", m.renamePrompt.View(), "", neonCyan, 80)
 }
 
 func (m model) findView() string {
-	w := max(20, m.width)
-	popupWidth := min(80, max(30, w-4))
-	copy := "Find:\n\n" + m.findPrompt.View()
-	return lipgloss.PlaceHorizontal(w, lipgloss.Center, lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(neonCyan).
-		Background(panel).
-		Padding(1, 2).
-		Width(max(1, popupWidth-6)).
-		Render(copy))
+	return m.modalView("Find", m.findPrompt.View(), "", neonCyan, 80)
 }
 
 func (m model) jumpPageView() string {
+	return m.modalView("Jump to page", m.jumpPrompt.View(), fmt.Sprintf("Current document has %d pages.", m.totalPages()), neonViolet, 52)
+}
+
+func (m model) modalView(title, body, help string, color lipgloss.Color, maxWidth int) string {
 	w := max(20, m.width)
-	popupWidth := min(52, max(30, w-4))
-	copy := fmt.Sprintf("Jump to page:\n\n%s\n\n%s", m.jumpPrompt.View(), m.styles.help.Render(fmt.Sprintf("Current document has %d pages.", m.totalPages())))
+	popupWidth := min(maxWidth, max(30, w-4))
+	contentWidth := max(1, popupWidth-6)
+	copy := m.modalContent(title, body, help, color, contentWidth)
 	return lipgloss.PlaceHorizontal(w, lipgloss.Center, lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(neonViolet).
+		BorderForeground(color).
 		Background(panel).
 		Padding(1, 2).
-		Width(max(1, popupWidth-6)).
+		Width(contentWidth).
 		Render(copy))
+}
+
+func (m model) modalContent(title, body, help string, color lipgloss.Color, width int) string {
+	titleStyle := m.styles.modalTitle.Foreground(color)
+	rule := m.styles.modalRule.Render(strings.Repeat("─", max(1, width)))
+	parts := []string{
+		titleStyle.Render(title),
+		rule,
+		m.styles.modalBody.Render(body),
+	}
+	if strings.TrimSpace(help) != "" {
+		parts = append(parts, m.styles.help.Render(help))
+	}
+	return strings.Join(parts, "\n\n")
 }

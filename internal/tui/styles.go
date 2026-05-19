@@ -29,6 +29,9 @@ type styles struct {
 	statusPath  lipgloss.Style
 	help        lipgloss.Style
 	helpKey     lipgloss.Style
+	modalTitle  lipgloss.Style
+	modalRule   lipgloss.Style
+	modalBody   lipgloss.Style
 	sidebar     lipgloss.Style
 	sidebarSel  lipgloss.Style
 	sidebarDim  lipgloss.Style
@@ -83,6 +86,13 @@ func newStyles() styles {
 		helpKey: lipgloss.NewStyle().
 			Foreground(neonCyan).
 			Bold(true),
+		modalTitle: lipgloss.NewStyle().
+			Foreground(neonCyan).
+			Bold(true),
+		modalRule: lipgloss.NewStyle().
+			Foreground(border),
+		modalBody: lipgloss.NewStyle().
+			Foreground(ink),
 		sidebar: lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder()).
 			BorderForeground(border).
@@ -90,6 +100,7 @@ func newStyles() styles {
 			Padding(0, 1),
 		sidebarSel: lipgloss.NewStyle().
 			Foreground(acidGreen).
+			Background(lipgloss.Color("#202035")).
 			Bold(true),
 		sidebarDim: lipgloss.NewStyle().
 			Foreground(muted),
