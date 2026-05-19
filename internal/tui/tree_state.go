@@ -33,6 +33,10 @@ func (m *model) renderTree() error {
 	vaultFolders := make([]string, 0, len(folders))
 	for _, folder := range folders {
 		vaultFolders = append(vaultFolders, folder.Path)
+		id := "vault:" + cleanVaultPath(folder.Path)
+		if id != "vault:" {
+			m.treeExpanded[id] = !folder.Collapsed
+		}
 	}
 	tree, err := readTree(m.cwd, vaultNotes, vaultFolders, m.treeExpanded)
 	m.tree = tree
@@ -136,7 +140,9 @@ func (m *model) expandTreeTo(id string) {
 		var prefix []string
 		for i := 0; i < len(parts)-1; i++ {
 			prefix = append(prefix, parts[i])
-			m.treeExpanded["vault:"+strings.Join(prefix, "/")] = true
+			folder := strings.Join(prefix, "/")
+			m.treeExpanded["vault:"+folder] = true
+			_ = m.persistVaultFolderExpanded(folder, true)
 		}
 	case id == "file:" || strings.HasPrefix(id, "file:"):
 		m.treeExpanded["file:"] = true
@@ -151,4 +157,15 @@ func (m *model) expandTreeTo(id string) {
 			dir = parent
 		}
 	}
+}
+
+func (m *model) persistVaultFolderExpanded(path string, expanded bool) error {
+	if m.store == nil || !m.store.Unlocked() {
+		return nil
+	}
+	path = cleanVaultPath(path)
+	if path == "" {
+		return nil
+	}
+	return m.store.SetFolderCollapsed(path, !expanded)
 }

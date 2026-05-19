@@ -28,7 +28,10 @@ func (s *Store) Migrate() error {
 			return err
 		}
 	}
-	return s.ensureNoteColumns()
+	if err := s.ensureNoteColumns(); err != nil {
+		return err
+	}
+	return s.ensureFolderColumns()
 }
 
 func (s *Store) ensureNoteColumns() error {
@@ -63,4 +66,35 @@ func (s *Store) ensureNoteColumns() error {
 		return err
 	}
 	return nil
+}
+
+func (s *Store) ensureFolderColumns() error {
+	rows, err := s.db.Query(`pragma table_info(folders)`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	hasCollapsed := false
+	for rows.Next() {
+		var cid int
+		var name, typ string
+		var notNull int
+		var defaultValue any
+		var pk int
+		if err := rows.Scan(&cid, &name, &typ, &notNull, &defaultValue, &pk); err != nil {
+			return err
+		}
+		if name == "collapsed" {
+			hasCollapsed = true
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if !hasCollapsed {
+		_, err := s.db.Exec(`alter table folders add column collapsed integer not null default 0`)
+		return err
+	}
+	_, err = s.db.Exec(`update folders set collapsed = case when lower(cast(collapsed as text)) in ('1', 'true', 't', 'yes', 'y', 'on') then 1 else 0 end`)
+	return err
 }

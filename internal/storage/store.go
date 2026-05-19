@@ -25,6 +25,7 @@ type Note struct {
 
 type Folder struct {
 	Path      string
+	Collapsed bool
 	CreatedAt time.Time
 }
 

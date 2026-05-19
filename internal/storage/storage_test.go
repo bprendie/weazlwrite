@@ -80,3 +80,35 @@ func TestEyesOnlyMigrationAndLoadAcceptSQLiteBoolShapes(t *testing.T) {
 		}
 	}
 }
+
+func TestFolderCollapsedPersistsThroughListFolders(t *testing.T) {
+	store, err := Open(filepath.Join(t.TempDir(), "vault.sqlite3"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	if err := store.Migrate(); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.CreateVault("secret"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SetFolderCollapsed("projects/specs", true); err != nil {
+		t.Fatal(err)
+	}
+
+	folders, err := store.ListFolders()
+	if err != nil {
+		t.Fatal(err)
+	}
+	collapsed := map[string]bool{}
+	for _, folder := range folders {
+		collapsed[folder.Path] = folder.Collapsed
+	}
+	if collapsed["projects"] {
+		t.Fatal("parent folder should default to expanded")
+	}
+	if !collapsed["projects/specs"] {
+		t.Fatal("folder collapsed state was not persisted")
+	}
+}

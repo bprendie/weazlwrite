@@ -22,6 +22,25 @@ func (s *Store) SaveFolder(path string) error {
 	return err
 }
 
+func (s *Store) SetFolderCollapsed(path string, collapsed bool) error {
+	if !s.unlocked {
+		return errors.New("vault is locked")
+	}
+	path = cleanStorePath(path)
+	if path == "" {
+		return errors.New("folder path is required")
+	}
+	if err := s.SaveFolder(path); err != nil {
+		return err
+	}
+	value := 0
+	if collapsed {
+		value = 1
+	}
+	_, err := s.db.Exec(`update folders set collapsed = ? where path = ?`, value, path)
+	return err
+}
+
 func (s *Store) DeleteFolder(path string) error {
 	if !s.unlocked {
 		return errors.New("vault is locked")
@@ -86,7 +105,7 @@ func (s *Store) RenameFolder(oldPath, newPath string) error {
 }
 
 func (s *Store) ListFolders() ([]Folder, error) {
-	rows, err := s.db.Query(`select path, created_at from folders order by path collate nocase`)
+	rows, err := s.db.Query(`select path, collapsed, created_at from folders order by path collate nocase`)
 	if err != nil {
 		return nil, err
 	}
@@ -94,9 +113,11 @@ func (s *Store) ListFolders() ([]Folder, error) {
 	var folders []Folder
 	for rows.Next() {
 		var folder Folder
-		if err := rows.Scan(&folder.Path, &folder.CreatedAt); err != nil {
+		var collapsed any
+		if err := rows.Scan(&folder.Path, &collapsed, &folder.CreatedAt); err != nil {
 			return nil, err
 		}
+		folder.Collapsed = scanBool(collapsed)
 		folders = append(folders, folder)
 	}
 	return folders, rows.Err()

@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bprendie/weazlwrite/internal/storage"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -229,5 +230,96 @@ func TestLayoutWidthsForTreeStates(t *testing.T) {
 	treeW, mainW = m.layoutWidths()
 	if treeW != 0 || mainW != 100 {
 		t.Fatalf("hidden tree layout = %d/%d, want 0/100", treeW, mainW)
+	}
+}
+
+func TestNewVaultNotePathUsesSelectedVaultFolder(t *testing.T) {
+	tests := []struct {
+		name  string
+		tree  []treeEntry
+		idx   int
+		vault string
+		want  string
+	}{
+		{
+			name: "selected folder",
+			tree: []treeEntry{
+				{name: "Vault", id: "vault:", isDir: true, vault: true},
+				{name: "specs/", id: "vault:projects/specs", path: "projects/specs", isDir: true, vault: true},
+			},
+			idx:  1,
+			want: "projects/specs/untitled.md",
+		},
+		{
+			name: "selected note parent",
+			tree: []treeEntry{
+				{name: "readme.md", id: "vault:projects/readme.md", path: "projects/readme.md", vault: true},
+			},
+			want: "projects/untitled.md",
+		},
+		{
+			name:  "current vault note parent",
+			tree:  []treeEntry{{name: "Files", id: "file:", isDir: true}},
+			vault: "daily/monday.md",
+			want:  "daily/untitled.md",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := model{tree: tt.tree, treeIdx: tt.idx, isVault: tt.vault != "", vaultPath: tt.vault}
+			if got := m.newVaultNotePath("untitled.md"); got != tt.want {
+				t.Fatalf("newVaultNotePath = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRenderTreeAppliesPersistedVaultFolderCollapse(t *testing.T) {
+	store, err := storage.Open(t.TempDir() + "/vault.sqlite3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	if err := store.Migrate(); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.CreateVault("secret"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SaveNote("id", "projects/specs/api.md", "api", "# API"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SetFolderCollapsed("projects/specs", true); err != nil {
+		t.Fatal(err)
+	}
+
+	m := model{
+		store:        store,
+		styles:       newStyles(),
+		width:        100,
+		height:       24,
+		treeVisible:  true,
+		cwd:          t.TempDir(),
+		treeExpanded: map[string]bool{"vault:": true, "file:": true, "vault:projects": true},
+	}
+	if err := m.renderTree(); err != nil {
+		t.Fatal(err)
+	}
+	if m.treeExpanded["vault:projects/specs"] {
+		t.Fatal("persisted collapsed folder rendered as expanded")
+	}
+	for _, entry := range m.tree {
+		if entry.id == "vault:projects/specs/api.md" {
+			t.Fatal("note inside collapsed folder should not be visible")
+		}
+	}
+	if err := store.SetFolderCollapsed("projects/specs", false); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.renderTree(); err != nil {
+		t.Fatal(err)
+	}
+	if !m.treeExpanded["vault:projects/specs"] {
+		t.Fatal("persisted expanded folder rendered as collapsed")
 	}
 }
