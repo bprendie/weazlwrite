@@ -21,6 +21,10 @@ func (m model) updateTree(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.pageTree(-1)
 	case "pgdown":
 		m.pageTree(1)
+	case "left":
+		m.collapseSelectedDir()
+	case "right":
+		m.expandSelectedDir()
 	case "enter":
 		return m, m.openSelected()
 	case " ":
@@ -116,11 +120,37 @@ func (m *model) toggleSelectedDir() {
 	m.ensureTreeSelectionVisible()
 }
 
+func (m *model) expandSelectedDir() {
+	m.setSelectedDirExpanded(true)
+}
+
+func (m *model) collapseSelectedDir() {
+	m.setSelectedDirExpanded(false)
+}
+
+func (m *model) setSelectedDirExpanded(expanded bool) {
+	if len(m.tree) == 0 || m.treeIdx >= len(m.tree) {
+		return
+	}
+	entry := m.tree[m.treeIdx]
+	if !entry.isDir || entry.id == "" {
+		return
+	}
+	if m.treeExpanded[entry.id] == expanded {
+		return
+	}
+	m.setTreeEntryExpanded(entry, expanded)
+}
+
 func (m *model) toggleTreeEntry(entry treeEntry) {
 	if entry.id == "" {
 		return
 	}
-	m.treeExpanded[entry.id] = !m.treeExpanded[entry.id]
+	m.setTreeEntryExpanded(entry, !m.treeExpanded[entry.id])
+}
+
+func (m *model) setTreeEntryExpanded(entry treeEntry, expanded bool) {
+	m.treeExpanded[entry.id] = expanded
 	if entry.vault && entry.isDir && entry.id != "vault:" {
 		if err := m.persistVaultFolderExpanded(entry.path, m.treeExpanded[entry.id]); err != nil {
 			m.err = err.Error()
