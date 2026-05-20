@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 )
 
 const appName = "weazlwrite"
@@ -173,6 +174,9 @@ func configPath() string {
 	if p := os.Getenv("WEAZLWRITE_CONFIG"); p != "" {
 		return p
 	}
+	if runtime.GOOS == "windows" {
+		return filepath.Join(windowsAppDataDir(), appName, "config.json")
+	}
 	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
 		return filepath.Join(xdg, appName, "config.json")
 	}
@@ -184,8 +188,19 @@ func dataDir() string {
 	if p := os.Getenv("WEAZLWRITE_DATA"); p != "" {
 		return p
 	}
+	if runtime.GOOS == "windows" {
+		return filepath.Join(windowsAppDataDir(), appName)
+	}
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, "."+appName)
+}
+
+func windowsAppDataDir() string {
+	if appData := os.Getenv("APPDATA"); appData != "" {
+		return appData
+	}
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, "AppData", "Roaming")
 }
 
 func legacyDefault() Config {

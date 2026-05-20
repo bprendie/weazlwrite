@@ -8,7 +8,10 @@ No web wrappers, no account portals, no telemetry drops, and no browser tabs bre
 
 ## Defaults
 
-On first launch, WeazlWrite drops a fresh `config.json` into `~/.config/weazlwrite/` with sensible local defaults:
+On first launch, WeazlWrite drops a fresh `config.json` into the local app config den with sensible defaults:
+
+- Linux/macOS: `~/.config/weazlwrite/config.json`
+- Windows: `%APPDATA%\weazlwrite\config.json`
 
 - `local-vllm`: `http://localhost:8000`
 - model: `local-model`
@@ -16,7 +19,7 @@ On first launch, WeazlWrite drops a fresh `config.json` into `~/.config/weazlwri
 
 Because hardcoding endpoints into a writing tool is how tiny annoyances become permanent roommates, WeazlWrite reads the endpoint and model from the config at runtime.
 
-Encrypted vaults live under `~/.weazlwrite/vault`. Vault notes are stored in SQLite with password-protected vaults and AES-GCM encrypted payloads, but the TUI presents each vault as a standard filesystem tree. Keep plain files on disk, lock private notes in the vault, or bounce a draft between both worlds.
+Encrypted vaults live under the local WeazlWrite data directory: `~/.weazlwrite/vault` on Linux/macOS and `%APPDATA%\weazlwrite\vault` on Windows. Vault notes are stored in SQLite with password-protected vaults and AES-GCM encrypted payloads, but the TUI presents each vault as a standard filesystem tree. Keep plain files on disk, lock private notes in the vault, or bounce a draft between both worlds.
 
 ## Run
 
@@ -25,7 +28,7 @@ go run ./cmd/weazlwrite
 go run ./cmd/weazlwrite ./notes/example.md
 ```
 
-## Grab The Source
+## Install On Linux/macOS
 
 ```sh
 ./scripts/install.sh
@@ -44,6 +47,21 @@ If you accidentally paste the `/v1` or `/api` suffixes, the installer quietly sa
 
 Set `WEAZLWRITE_SKIP_LAUNCH=1` to install and configure without triggering the TUI.
 
+## Install On Windows
+
+Run PowerShell from the repo root:
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\scripts\install.ps1
+```
+
+The Windows installer builds `weazlwrite.exe` and `weazlwrite-setup.exe`, puts them in `%APPDATA%\weazlwrite\bin`, creates `%APPDATA%\weazlwrite\vault`, writes `%APPDATA%\weazlwrite\config.json`, and adds the bin directory to your user `PATH`.
+
+Because WeazlWrite uses SQLite through CGO, Windows needs Go and a C compiler. The installer checks for both. If they are missing and `winget` is available, it installs Go and MSYS2/UCRT GCC, then builds the app. If PowerShell still cannot see `go` or `gcc` immediately after install, open a fresh PowerShell window and rerun the script.
+
+Set `WEAZLWRITE_SKIP_LAUNCH=1` or pass `-SkipLaunch` to install and configure without launching the TUI.
+
 ## Build From Source
 
 WeazlWrite is a Go app, but it uses SQLite through `go-sqlite3`. Builds require Go 1.25 or newer, CGO, and a working C compiler. It is built to run on solid, reliable standards-based systems like Ubuntu LTS. That C compiler requirement is the one little bit of yak hair you have to shave.
@@ -57,6 +75,13 @@ Useful environment overrides:
 
 - `WEAZLWRITE_CONFIG=/path/to/config.json`
 - `WEAZLWRITE_DATA=/path/to/data-dir`
+
+PowerShell uses the same overrides:
+
+```powershell
+$env:WEAZLWRITE_CONFIG = "C:\path\to\config.json"
+$env:WEAZLWRITE_DATA = "C:\path\to\data"
+```
 
 ## Keys
 
@@ -91,7 +116,7 @@ Useful environment overrides:
 
 Each vault is an encrypted SQLite database disguised as a note tree. Save something as `projects/specs/api.md`, and WeazlWrite displays it cleanly under `Vault / projects / specs / api.md`.
 
-On startup, WeazlWrite scans `~/.weazlwrite/vault` and throws a vault picker. Pick an existing vault, or press `n` to spin up a new context. New vaults require password confirmation before the database is forged. The selected vault path locks into your config, but the picker stays available on launch so context switching stays cheap.
+On startup, WeazlWrite scans the vault directory and throws a vault picker. On Linux/macOS that is `~/.weazlwrite/vault`; on Windows it is `%APPDATA%\weazlwrite\vault`. Pick an existing vault, or press `n` to spin up a new context. New vaults require password confirmation before the database is forged. The selected vault path locks into your config, but the picker stays available on launch so context switching stays cheap.
 
 The left rail splits your brain in two: `Vault` for the encrypted underground, and `Files` for regular surface-level filesystem work. The active note gets a tiny marker so you know exactly where you are without the tree turning into a blinking holiday display. A `*` means the current buffer has unsaved changes.
 
@@ -131,7 +156,7 @@ Need a generated Markdown block? Press `ctrl+p`, describe the spell, and WeazlWr
 
 WeazlWrite is strictly local-first and built for paranoia, but it is a TUI app, not a hardware security module. The bcrypt checks and AES-GCM payloads exist to lock out casual snooping and keep your data sovereign. They are not a guarantee that a weak password will survive a dedicated offline attack if someone physically steals your rig.
 
-- Vault databases live locally under `~/.weazlwrite/vault`.
+- Vault databases live locally under `~/.weazlwrite/vault` on Linux/macOS or `%APPDATA%\weazlwrite\vault` on Windows.
 - Vault payloads are encrypted with AES-GCM after unlock.
 - API keys belong in your local config, nowhere else.
 - Filesystem saves are plain files. Vault saves are encrypted records. Choose accordingly.
