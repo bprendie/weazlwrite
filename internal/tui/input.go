@@ -22,6 +22,9 @@ func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "alt+o":
 		return m.toggleCurrentEyesOnly()
 	case "ctrl+n":
+		if m.focus == focusTree {
+			return m.startNewFolder()
+		}
 		m.newVaultNote()
 		return m, nil
 	case "ctrl+p", "alt+i":

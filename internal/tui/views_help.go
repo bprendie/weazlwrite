@@ -25,7 +25,7 @@ Main writing
   alt+f               Save to: filesystem.
   ctrl+f              Find text in the current edit/render pane.
   ctrl+g              Jump to a page in the current edit/render pane.
-  ctrl+n              New untitled vault note.
+  ctrl+n              New untitled vault note. When the tree is focused, create a folder.
   ctrl+p              AI insert prompt. The generated Markdown block is inserted at the cursor.
   ctrl+o              Show or hide the tree.
   ctrl+y              Toggle mouse capture. Off means terminal drag-selection works for copying text.
@@ -37,7 +37,8 @@ Main writing
 Tree
   up/down or k/j      Move selection.
   enter               Open a file/note, or fold/unfold a folder.
-  n                   New folder at the selected location.
+  n                   New document at the selected folder or file's parent.
+  ctrl+n              New folder at the selected location.
   d                   Delete the selected file, note, or empty folder.
   r                   Rename or move the selected entry by typing its new path.
   o                   Toggle eyes-only on a vault note. Disabling asks for confirmation.

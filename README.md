@@ -92,7 +92,8 @@ $env:WEAZLWRITE_DATA = "C:\path\to\data"
 - `tab`: move between the file tree and the main writing surface
 - `enter`: open a selected file, or fold/unfold a selected folder
 - `space`: pick up a file or note; move to a folder; press `space` again to drop it
-- `n`: create a new folder from the tree
+- `n`: create a new document from the tree
+- `ctrl+n`: create a new folder from the tree, or a new vault note when the writer is focused
 - `d`: delete the selected file, note, or empty folder
 - `r`: rename or move the selected tree item by typing its new path
 - `o`: toggle Eyes Only on a vault note
@@ -103,7 +104,6 @@ $env:WEAZLWRITE_DATA = "C:\path\to\data"
 - `ctrl+f`: find text in the current pane
 - `ctrl+g`: jump to a page in the current pane
 - `ctrl+p`: ask the local model to insert a Markdown block
-- `ctrl+n`: new vault note
 - `ctrl+y`: toggle mouse capture off/on for terminal text selection
 - `alt+o`: toggle Eyes Only on the current vault note
 - `ctrl+k`: open the full command popup
@@ -122,7 +122,7 @@ The left rail splits your brain in two: `Vault` for the encrypted underground, a
 
 Big directories are fine. Move with `j` / `k`, the arrow keys, `pgup` / `pgdown`, or the mouse wheel; the tree keeps the selected row in view instead of pretending the world ends at the bottom of the pane.
 
-Tree chores happen right where your cursor is. Press `n` for a new folder, `d` to delete a selected file or empty folder, and `r` to rename or move. Press `space` to pick up a file, navigate, and press `space` again to drop it. Folders fold and unfold with `enter`.
+Tree chores happen right where your cursor is. Press `n` to create a new document in the selected folder, `ctrl+n` for a new folder, `d` to delete a selected file or empty folder, and `r` to rename or move. Press `space` to pick up a file, navigate, and press `space` again to drop it. Folders fold and unfold with `enter`.
 
 Press `ctrl+v` to save the current buffer into the encrypted vault. Press `alt+f` to save it out to the regular filesystem. Press `ctrl+s` when you simply want to save back to wherever the current note already lives.
 
