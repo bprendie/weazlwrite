@@ -86,6 +86,14 @@ func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.resize()
 			return m, tea.ClearScreen
 		}
+		if m.view == viewRender {
+			m.setView(viewEdit)
+			return m, nil
+		}
+		if m.focus == focusEditor && m.treeVisible {
+			m.setFocus(focusTree)
+			return m, nil
+		}
 		m.setMainFocus()
 		return m, nil
 	}

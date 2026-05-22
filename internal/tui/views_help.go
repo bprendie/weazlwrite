@@ -37,7 +37,7 @@ Main writing
 Tree
   up/down or k/j      Move selection.
   enter               Open a file/note, or fold/unfold a folder.
-  n                   New document at the selected folder or file's parent.
+  n                   New document at the selected folder or file's parent; enter the path before creation.
   ctrl+n              New folder at the selected location.
   d                   Delete the selected file, note, or empty folder.
   r                   Rename or move the selected entry by typing its new path.
@@ -46,6 +46,10 @@ Tree
   i                   Import the selected filesystem file/folder into the vault.
   pgup/pgdown         Page through the tree.
   esc                 Put down a picked-up entry and return focus to the writer.
+
+Escape
+  render mode         Return to edit mode.
+  edit mode           Move focus back to the tree when it is visible.
 
 Vault and filesystem
   Vault entries live inside the encrypted SQLite vault at ~/.weazlwrite/vault.

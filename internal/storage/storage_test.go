@@ -112,3 +112,89 @@ func TestFolderCollapsedPersistsThroughListFolders(t *testing.T) {
 		t.Fatal("folder collapsed state was not persisted")
 	}
 }
+
+func TestDeleteFolderRemovesEmptyFolderSubtree(t *testing.T) {
+	store, err := Open(filepath.Join(t.TempDir(), "vault.sqlite3"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	if err := store.Migrate(); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.CreateVault("secret"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SaveFolder("projects/empty/nested"); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := store.DeleteFolder("projects/empty"); err != nil {
+		t.Fatal(err)
+	}
+
+	folders, err := store.ListFolders()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, folder := range folders {
+		if folder.Path == "projects/empty" || folder.Path == "projects/empty/nested" {
+			t.Fatalf("empty folder subtree still exists: %s", folder.Path)
+		}
+	}
+}
+
+func TestDeleteFolderBlocksWhenNotesExistBelow(t *testing.T) {
+	store, err := Open(filepath.Join(t.TempDir(), "vault.sqlite3"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	if err := store.Migrate(); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.CreateVault("secret"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SaveNote("id", "projects/live/note.md", "note", "# Note"); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := store.DeleteFolder("projects/live"); err == nil {
+		t.Fatal("expected delete to fail when notes exist below folder")
+	}
+}
+
+func TestDeleteFolderDoesNotTreatPathCharactersAsWildcards(t *testing.T) {
+	store, err := Open(filepath.Join(t.TempDir(), "vault.sqlite3"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	if err := store.Migrate(); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.CreateVault("secret"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SaveFolder("work_a/empty"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SaveNote("id", "workXa/note.md", "note", "# Note"); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := store.DeleteFolder("work_a/empty"); err != nil {
+		t.Fatal(err)
+	}
+
+	folders, err := store.ListFolders()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, folder := range folders {
+		if folder.Path == "work_a/empty" {
+			t.Fatal("folder with underscore path was not deleted")
+		}
+	}
+}

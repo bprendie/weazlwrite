@@ -31,6 +31,8 @@ func (m model) View() string {
 		body = m.saveVaultView()
 	} else if m.mode == modeNewFolder {
 		body = m.newFolderView()
+	} else if m.mode == modeNewDocument {
+		body = m.newDocumentView()
 	} else if m.mode == modeConfirmDelete {
 		body = m.confirmDeleteView()
 	} else if m.mode == modeConfirmEyesOff {

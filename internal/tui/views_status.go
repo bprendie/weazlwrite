@@ -147,6 +147,9 @@ func (m model) helpText() string {
 	if m.mode == modeNewFolder {
 		return "enter create | esc cancel | ctrl+c quit"
 	}
+	if m.mode == modeNewDocument {
+		return "enter create | esc cancel | ctrl+c quit"
+	}
 	if m.mode == modeConfirmDelete {
 		return "enter/y delete | esc/n cancel | ctrl+c quit"
 	}

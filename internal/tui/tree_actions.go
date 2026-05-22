@@ -30,8 +30,7 @@ func (m model) updateTree(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case " ":
 		m.pickupOrDropSelected()
 	case "n":
-		m.createTreeDocument()
-		return m, nil
+		return m.startNewDocument()
 	case "d":
 		return m.startConfirmDelete()
 	case "r":

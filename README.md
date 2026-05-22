@@ -88,6 +88,7 @@ $env:WEAZLWRITE_DATA = "C:\path\to\data"
 - startup vault picker: `up` / `down` choose, `enter` opens, `n` creates a new vault
 - `ctrl+e`: edit mode
 - `ctrl+r`: rendered preview mode
+- `esc`: leave render mode for edit mode, or move from the editor back to the tree
 - `ctrl+o`: show or hide the file tree
 - `tab`: move between the file tree and the main writing surface
 - `enter`: open a selected file, or fold/unfold a selected folder
@@ -122,7 +123,7 @@ The left rail splits your brain in two: `Vault` for the encrypted underground, a
 
 Big directories are fine. Move with `j` / `k`, the arrow keys, `pgup` / `pgdown`, or the mouse wheel; the tree keeps the selected row in view instead of pretending the world ends at the bottom of the pane.
 
-Tree chores happen right where your cursor is. Press `n` to create a new document in the selected folder, `ctrl+n` for a new folder, `d` to delete a selected file or empty folder, and `r` to rename or move. Press `space` to pick up a file, navigate, and press `space` again to drop it. Folders fold and unfold with `enter`.
+Tree chores happen right where your cursor is. Press `n` to create a new document in the selected folder, then type the path before it is created. Press `ctrl+n` for a new folder, `d` to delete a selected file or empty folder, and `r` to rename or move. Press `space` to pick up a file, navigate, and press `space` again to drop it. Folders fold and unfold with `enter`.
 
 Press `ctrl+v` to save the current buffer into the encrypted vault. Press `alt+f` to save it out to the regular filesystem. Press `ctrl+s` when you simply want to save back to wherever the current note already lives.
 

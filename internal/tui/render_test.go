@@ -76,6 +76,27 @@ func TestTabCyclesPanes(t *testing.T) {
 	}
 }
 
+func TestEscapeMovesFromRenderToEdit(t *testing.T) {
+	m := model{styles: newStyles(), mode: modeWrite, focus: focusPreview, view: viewRender, treeVisible: true, editor: textarea.New()}
+	updated, _ := m.updateWrite(tea.KeyMsg{Type: tea.KeyEsc})
+	got := updated.(model)
+	if got.view != viewEdit {
+		t.Fatalf("esc from render view = %v, want edit", got.view)
+	}
+	if got.focus != focusEditor {
+		t.Fatalf("esc from render focus = %v, want editor", got.focus)
+	}
+}
+
+func TestEscapeMovesFromEditorToTree(t *testing.T) {
+	m := model{styles: newStyles(), mode: modeWrite, focus: focusEditor, view: viewEdit, treeVisible: true, editor: textarea.New()}
+	updated, _ := m.updateWrite(tea.KeyMsg{Type: tea.KeyEsc})
+	got := updated.(model)
+	if got.focus != focusTree {
+		t.Fatalf("esc from editor focus = %v, want tree", got.focus)
+	}
+}
+
 func TestCtrlPOpensAIPrompt(t *testing.T) {
 	m := model{styles: newStyles(), mode: modeWrite, focus: focusEditor, aiPrompt: textinput.New(), editor: textarea.New()}
 	updated, _ := m.updateWrite(tea.KeyMsg{Type: tea.KeyCtrlP})

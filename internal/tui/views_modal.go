@@ -46,6 +46,10 @@ func (m model) newFolderView() string {
 	return m.modalView("New folder", m.folderPrompt.View(), "", neonCyan, 80)
 }
 
+func (m model) newDocumentView() string {
+	return m.modalView("New document", m.renamePrompt.View(), "", neonCyan, 80)
+}
+
 func (m model) confirmDeleteView() string {
 	w := max(20, m.width)
 	popupWidth := min(80, max(30, w-4))

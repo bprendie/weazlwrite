@@ -29,6 +29,7 @@ const (
 	modeSaveFile
 	modeSaveVault
 	modeNewFolder
+	modeNewDocument
 	modeConfirmDelete
 	modeConfirmEyesOff
 	modeRenameTree
@@ -95,6 +96,7 @@ type model struct {
 	deleteTarget  treeEntry
 	eyesOffTarget treeEntry
 	renameTarget  treeEntry
+	newDocTarget  treeEntry
 	carryTarget   treeEntry
 	cwd           string
 	filePath      string
@@ -274,6 +276,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.mode == modeNewFolder {
 			return m.updateNewFolder(msg)
+		}
+		if m.mode == modeNewDocument {
+			return m.updateNewDocument(msg)
 		}
 		if m.mode == modeConfirmDelete {
 			return m.updateConfirmDelete(msg)

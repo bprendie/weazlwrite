@@ -46,21 +46,18 @@ func (s *Store) DeleteFolder(path string) error {
 		return errors.New("vault is locked")
 	}
 	path = cleanStorePath(path)
-	like := path + "/%"
-	var children int
-	if err := s.db.QueryRow(
-		`select
-		   (select count(*) from notes where path like ?)
-		   +
-		   (select count(*) from folders where path like ?)`,
-		like, like,
-	).Scan(&children); err != nil {
+	if path == "" {
+		return errors.New("folder path is required")
+	}
+	prefix := path + "/"
+	var notes int
+	if err := s.db.QueryRow(`select count(*) from notes where substr(path, 1, ?) = ?`, len(prefix), prefix).Scan(&notes); err != nil {
 		return err
 	}
-	if children > 0 {
+	if notes > 0 {
 		return errors.New("folder is not empty")
 	}
-	_, err := s.db.Exec(`delete from folders where path = ?`, path)
+	_, err := s.db.Exec(`delete from folders where path = ? or substr(path, 1, ?) = ?`, path, len(prefix), prefix)
 	return err
 }
 

@@ -138,6 +138,50 @@ func (m model) updateNewFolder(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 }
 
+func (m model) startNewDocument() (tea.Model, tea.Cmd) {
+	entry, ok := m.selectedTreeEntry()
+	if !ok {
+		m.err = "select a folder for the new document"
+		return m, nil
+	}
+	base := m.documentBasePath(entry)
+	m.newDocTarget = entry
+	m.mode = modeNewDocument
+	m.renamePrompt.SetValue(base)
+	m.renamePrompt.Focus()
+	m.editor.Blur()
+	m.status = "new document"
+	return m, textinput.Blink
+}
+
+func (m model) updateNewDocument(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		path := strings.TrimSpace(m.renamePrompt.Value())
+		if path == "" {
+			m.err = "document path is required"
+			return m, nil
+		}
+		if err := m.createTreeDocumentAtPath(m.newDocTarget, path); err != nil {
+			m.err = err.Error()
+			return m, nil
+		}
+		m.mode = modeWrite
+		m.newDocTarget = treeEntry{}
+		return m, nil
+	case "esc":
+		m.mode = modeWrite
+		m.focus = focusTree
+		m.newDocTarget = treeEntry{}
+		m.status = "new document cancelled"
+		return m, nil
+	default:
+		var cmd tea.Cmd
+		m.renamePrompt, cmd = m.renamePrompt.Update(msg)
+		return m, cmd
+	}
+}
+
 func (m model) startConfirmDelete() (tea.Model, tea.Cmd) {
 	if len(m.tree) == 0 || m.treeIdx >= len(m.tree) {
 		return m, nil

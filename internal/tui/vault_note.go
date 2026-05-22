@@ -32,20 +32,26 @@ func (m *model) createTreeDocument() {
 		m.err = "select a folder for the new document"
 		return
 	}
-	if entry.vault {
-		if err := m.createVaultDocumentAtSelection(entry); err != nil {
-			m.err = err.Error()
-		}
-		return
-	}
-	if err := m.createFilesystemDocumentAtSelection(entry); err != nil {
+	path := m.documentBasePath(entry) + "untitled-" + uuid.NewString()[:8] + ".md"
+	if err := m.createTreeDocumentAtPath(entry, path); err != nil {
 		m.err = err.Error()
 	}
 }
 
+func (m *model) createTreeDocumentAtPath(entry treeEntry, path string) error {
+	if entry.vault {
+		return m.createVaultDocumentAtPath(path)
+	}
+	return m.createFilesystemDocumentAtPath(path)
+}
+
 func (m *model) createVaultDocumentAtSelection(entry treeEntry) error {
-	name := "untitled-" + uuid.NewString()[:8] + ".md"
-	path := cleanVaultPath(m.vaultDocumentBase(entry) + name)
+	path := m.vaultDocumentBase(entry) + "untitled-" + uuid.NewString()[:8] + ".md"
+	return m.createVaultDocumentAtPath(path)
+}
+
+func (m *model) createVaultDocumentAtPath(path string) error {
+	path = cleanVaultDocumentPath(path)
 	if path == "" {
 		return fmt.Errorf("invalid vault path")
 	}
@@ -78,7 +84,14 @@ func (m *model) createFilesystemDocumentAtSelection(entry treeEntry) error {
 	if dir == "" {
 		return fmt.Errorf("select a filesystem folder")
 	}
-	path := filepath.Join(dir, "untitled-"+uuid.NewString()[:8]+".md")
+	return m.createFilesystemDocumentAtPath(filepath.Join(dir, "untitled-"+uuid.NewString()[:8]+".md"))
+}
+
+func (m *model) createFilesystemDocumentAtPath(path string) error {
+	path = cleanFilesystemDocumentPath(path)
+	if path == "" {
+		return fmt.Errorf("invalid filesystem path")
+	}
 	content := "# Untitled\n\n"
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
@@ -106,6 +119,17 @@ func (m *model) createFilesystemDocumentAtSelection(entry treeEntry) error {
 	return nil
 }
 
+func (m model) documentBasePath(entry treeEntry) string {
+	if entry.vault {
+		return m.vaultDocumentBase(entry)
+	}
+	dir := m.filesystemDocumentDir(entry)
+	if dir == "" {
+		return ""
+	}
+	return dir + string(filepath.Separator)
+}
+
 func (m model) newVaultNotePath(name string) string {
 	base := m.selectedVaultFolderBase()
 	if base == "" && m.isVault && m.vaultPath != "" {
@@ -114,6 +138,35 @@ func (m model) newVaultNotePath(name string) string {
 		}
 	}
 	return cleanVaultPath(base + name)
+}
+
+func cleanVaultDocumentPath(path string) string {
+	clean := cleanVaultPath(path)
+	if clean == "" || strings.HasSuffix(clean, "/") {
+		return ""
+	}
+	if filepath.Ext(clean) == "" {
+		clean += ".md"
+	}
+	return clean
+}
+
+func cleanFilesystemDocumentPath(path string) string {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return ""
+	}
+	if strings.HasSuffix(path, string(filepath.Separator)) || strings.HasSuffix(path, "/") {
+		return ""
+	}
+	if filepath.Ext(path) == "" {
+		path += ".md"
+	}
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return ""
+	}
+	return abs
 }
 
 func (m model) vaultDocumentBase(entry treeEntry) string {
