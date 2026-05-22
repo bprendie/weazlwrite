@@ -31,7 +31,7 @@ func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "ctrl+y":
 		return m.toggleMouseCapture()
-	case "ctrl+k", "?", "h", "f1":
+	case "ctrl+k", "f1":
 		return m.startHelp()
 	case "ctrl+e":
 		m.setView(viewEdit)
@@ -85,6 +85,10 @@ func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		m.setMainFocus()
 		return m, nil
+	}
+
+	if (msg.String() == "?" || msg.String() == "h") && (m.focus != focusEditor || m.view != viewEdit) {
+		return m.startHelp()
 	}
 
 	if m.focus == focusTree {

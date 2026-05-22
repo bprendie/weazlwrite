@@ -86,6 +86,29 @@ func TestCtrlPOpensAIPrompt(t *testing.T) {
 	}
 }
 
+func TestPlainHTypesInEditorInsteadOfOpeningHelp(t *testing.T) {
+	editor := textarea.New()
+	editor.Focus()
+	m := model{styles: newStyles(), mode: modeWrite, focus: focusEditor, view: viewEdit, editor: editor}
+	updated, _ := m.updateWrite(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
+	got := updated.(model)
+	if got.mode != modeWrite {
+		t.Fatalf("plain h mode = %v, want modeWrite", got.mode)
+	}
+	if got.editor.Value() != "h" {
+		t.Fatalf("editor value = %q, want h", got.editor.Value())
+	}
+}
+
+func TestPlainHStillOpensHelpOutsideEditorTyping(t *testing.T) {
+	m := model{styles: newStyles(), mode: modeWrite, focus: focusTree, view: viewEdit, editor: textarea.New()}
+	updated, _ := m.updateWrite(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
+	got := updated.(model)
+	if got.mode != modeHelp {
+		t.Fatalf("plain h from tree mode = %v, want modeHelp", got.mode)
+	}
+}
+
 func TestCtrlRSwitchesToRenderMode(t *testing.T) {
 	m := model{styles: newStyles(), mode: modeWrite, focus: focusEditor, view: viewEdit, editor: textarea.New()}
 	updated, _ := m.updateWrite(tea.KeyMsg{Type: tea.KeyCtrlR})
