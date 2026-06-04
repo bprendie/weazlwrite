@@ -256,6 +256,7 @@ func (m *model) selectVault(choice vaultChoice) error {
 		store.Close()
 		return err
 	}
+	store.SetAutoLockTimeout(m.cfg.Vault.AutoLockTimeout())
 	m.store = store
 	m.activeVault = choice
 	m.cfg.Database.Path = choice.path

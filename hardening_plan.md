@@ -403,16 +403,16 @@ go run ./cmd/weazlwrite
 ## Rollout Strategy
 
 ### Phase 1: Critical Security (Week 1)
-- [ ] Upgrade Go to 1.25.10+
-- [ ] Update golang.org/x/net to v0.53.0+
-- [ ] Run full test suite
+- [x] Upgrade Go to 1.25.10+
+- [x] Update golang.org/x/net to v0.53.0+
+- [x] Run full test suite
 - [ ] Tag release v1.1.0
 
 ### Phase 2: High Priority Features (Week 2-3)
-- [ ] Implement password attempt rate limiting
-- [ ] Implement session auto-lock
-- [ ] Add configuration options
-- [ ] Update documentation
+- [x] Implement password attempt rate limiting
+- [x] Implement session auto-lock
+- [x] Add configuration options
+- [x] Update documentation
 - [ ] Tag release v1.2.0
 
 ### Phase 3: Medium Priority (Future)
@@ -430,15 +430,15 @@ go run ./cmd/weazlwrite
 ## Documentation Updates
 
 ### README.md Updates Needed
-1. Add "Security" section with current hardening status
-2. Document auto-lock feature and configuration
-3. Document rate limiting behavior
-4. Update "Security" section with new mitigations
+1. [x] Add "Security" section with current hardening status
+2. [x] Document auto-lock feature and configuration
+3. [x] Document rate limiting behavior
+4. [x] Update "Security" section with new mitigations
 
 ### New Documentation
-1. `SECURITY.md` - Security policy and vulnerability reporting
-2. `CHANGELOG.md` - Track security-related changes
-3. Update installation scripts to check Go version
+1. [x] `SECURITY.md` - Security policy and vulnerability reporting
+2. [x] `CHANGELOG.md` - Track security-related changes
+3. [x] Update installation scripts to check Go version
 
 ---
 

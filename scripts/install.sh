@@ -8,28 +8,31 @@ BIN_DIR="$INSTALL_ROOT/bin"
 BIN_PATH="$BIN_DIR/$APP_NAME"
 GO_CACHE="${GOCACHE:-"$REPO_ROOT/.gocache"}"
 GO_MOD_CACHE="${GOMODCACHE:-"$REPO_ROOT/.gomodcache"}"
+REQUIRED_GO="1.25.10"
 
 go_version_number() {
-  go version | awk '{print $3}' | sed 's/^go//' | cut -d. -f1,2
+  go version | awk '{print $3}' | sed 's/^go//'
 }
 
 version_at_least() {
-  local current="$1"
-  local required="$2"
-  local current_major current_minor required_major required_minor
-  current_major="${current%%.*}"
-  current_minor="${current#*.}"
-  required_major="${required%%.*}"
-  required_minor="${required#*.}"
-  [[ "$current_major" =~ ^[0-9]+$ && "$current_minor" =~ ^[0-9]+$ ]] || return 1
-  [[ "$required_major" =~ ^[0-9]+$ && "$required_minor" =~ ^[0-9]+$ ]] || return 1
-  if (( current_major > required_major )); then
-    return 0
-  fi
-  if (( current_major == required_major && current_minor >= required_minor )); then
-    return 0
-  fi
-  return 1
+	local current="$1"
+	local required="$2"
+	local IFS=.
+	local current_parts required_parts
+	read -r -a current_parts <<<"$current"
+	read -r -a required_parts <<<"$required"
+	for i in 0 1 2; do
+		local current_part="${current_parts[$i]:-0}"
+		local required_part="${required_parts[$i]:-0}"
+		[[ "$current_part" =~ ^[0-9]+$ && "$required_part" =~ ^[0-9]+$ ]] || return 1
+		if (( current_part > required_part )); then
+			return 0
+		fi
+		if (( current_part < required_part )); then
+			return 1
+		fi
+	done
+	return 0
 }
 
 check_go_version() {
@@ -39,10 +42,10 @@ check_go_version() {
     exit 1
   fi
 
-  local required current
-  required="$(awk '/^go / {print $2; exit}' "$REPO_ROOT/go.mod" | cut -d. -f1,2)"
-  current="$(go_version_number)"
-  if ! version_at_least "$current" "$required"; then
+	local required current
+	required="$REQUIRED_GO"
+	current="$(go_version_number)"
+	if ! version_at_least "$current" "$required"; then
     echo "Go $required or newer is required to build $APP_NAME." >&2
     echo "Found Go $current at $(command -v go)." >&2
     echo "Update Go, then rerun ./scripts/install.sh." >&2

@@ -2,7 +2,9 @@ package storage
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestScanBoolAcceptsLegacyEyesOnlyValues(t *testing.T) {
@@ -196,5 +198,71 @@ func TestDeleteFolderDoesNotTreatPathCharactersAsWildcards(t *testing.T) {
 		if folder.Path == "work_a/empty" {
 			t.Fatal("folder with underscore path was not deleted")
 		}
+	}
+}
+
+func TestUnlockRateLimitBacksOffAndResetsOnSuccess(t *testing.T) {
+	store, err := Open(filepath.Join(t.TempDir(), "vault.sqlite3"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	if err := store.Migrate(); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.CreateVault("secret"); err != nil {
+		t.Fatal(err)
+	}
+
+	originalDelays := passwordAttemptDelays
+	passwordAttemptDelays = []time.Duration{10 * time.Millisecond}
+	defer func() {
+		passwordAttemptDelays = originalDelays
+	}()
+
+	store.Lock()
+	if err := store.Unlock("wrong"); err == nil || err.Error() != "bad vault password" {
+		t.Fatalf("first bad unlock error = %v, want bad vault password", err)
+	}
+	if err := store.Unlock("secret"); err == nil || !strings.Contains(err.Error(), "too many failed attempts") {
+		t.Fatalf("lockout unlock error = %v, want lockout", err)
+	}
+	time.Sleep(15 * time.Millisecond)
+	if err := store.Unlock("secret"); err != nil {
+		t.Fatalf("unlock after backoff: %v", err)
+	}
+
+	store.Lock()
+	if err := store.Unlock("wrong"); err == nil || err.Error() != "bad vault password" {
+		t.Fatalf("bad unlock after reset error = %v, want bad vault password", err)
+	}
+}
+
+func TestAutoLockClearsUnlockedStateAndKey(t *testing.T) {
+	store, err := Open(filepath.Join(t.TempDir(), "vault.sqlite3"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	if err := store.Migrate(); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.CreateVault("secret"); err != nil {
+		t.Fatal(err)
+	}
+
+	store.SetAutoLockTimeout(10 * time.Millisecond)
+	if store.CheckAutoLock() {
+		t.Fatal("auto-lock triggered before timeout")
+	}
+	time.Sleep(15 * time.Millisecond)
+	if !store.CheckAutoLock() {
+		t.Fatal("auto-lock did not trigger after timeout")
+	}
+	if store.Unlocked() {
+		t.Fatal("store remained unlocked after auto-lock")
+	}
+	if store.key != nil {
+		t.Fatal("store key was not cleared after auto-lock")
 	}
 }

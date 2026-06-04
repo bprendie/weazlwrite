@@ -36,6 +36,8 @@ func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.toggleMouseCapture()
 	case "ctrl+k", "f1":
 		return m.startHelp()
+	case "ctrl+l":
+		return m.startLLMConfig()
 	case "ctrl+e":
 		m.setView(viewEdit)
 		return m, nil

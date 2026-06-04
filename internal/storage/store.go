@@ -10,9 +10,13 @@ import (
 )
 
 type Store struct {
-	db       *sql.DB
-	key      []byte
-	unlocked bool
+	db              *sql.DB
+	key             []byte
+	unlocked        bool
+	failedAttempts  int
+	lockoutUntil    time.Time
+	lastActivity    time.Time
+	autoLockTimeout time.Duration
 }
 
 type Note struct {
@@ -46,4 +50,36 @@ func (s *Store) Close() error {
 
 func (s *Store) Unlocked() bool {
 	return s.unlocked
+}
+
+func (s *Store) SetAutoLockTimeout(timeout time.Duration) {
+	s.autoLockTimeout = timeout
+	s.UpdateActivity()
+}
+
+func (s *Store) UpdateActivity() {
+	if s.unlocked {
+		s.lastActivity = time.Now()
+	}
+}
+
+func (s *Store) CheckAutoLock() bool {
+	if !s.AutoLockExpired() {
+		return false
+	}
+	s.Lock()
+	return true
+}
+
+func (s *Store) AutoLockExpired() bool {
+	if !s.unlocked || s.autoLockTimeout <= 0 {
+		return false
+	}
+	return time.Since(s.lastActivity) > s.autoLockTimeout
+}
+
+func (s *Store) Lock() {
+	s.unlocked = false
+	s.key = nil
+	s.lastActivity = time.Time{}
 }

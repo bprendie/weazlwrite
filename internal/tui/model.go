@@ -37,6 +37,11 @@ const (
 	modeFind
 	modeJumpPage
 	modeImporting
+	modeLLMProvider
+	modeLLMServer
+	modeLLMLoading
+	modeLLMModel
+	modeLLMContext
 )
 
 type focus int
@@ -80,6 +85,7 @@ type model struct {
 	renamePrompt  textinput.Model
 	findPrompt    textinput.Model
 	jumpPrompt    textinput.Model
+	llmPrompt     textinput.Model
 	working       spinner.Model
 	editor        textarea.Model
 	preview       viewport.Model
@@ -115,8 +121,21 @@ type model struct {
 	generatingAt  time.Time
 	lastFind      string
 	pendingPass   string
+	llmDraft      llmConfigDraft
 	err           string
 	status        string
+}
+
+type llmConfigDraft struct {
+	ProviderType  string
+	ServerURL     string
+	Model         string
+	ContextWindow int
+	ProviderIndex int
+	ModelIndex    int
+	ContextIndex  int
+	Models        []string
+	FetchErr      string
 }
 
 type vaultChoice struct {
@@ -135,6 +154,13 @@ type importResultMsg struct {
 	folders  int
 	warnings int
 	err      error
+}
+
+type autoLockTickMsg struct{}
+
+type llmModelsMsg struct {
+	models []string
+	err    error
 }
 
 func New(cfg config.Config, cfgPath string, openPath string) tea.Model {
@@ -181,6 +207,10 @@ func New(cfg config.Config, cfgPath string, openPath string) tea.Model {
 	jumpPrompt.Placeholder = "page number"
 	jumpPrompt.CharLimit = 64
 
+	llmPrompt := textinput.New()
+	llmPrompt.Placeholder = "http://localhost:8000"
+	llmPrompt.CharLimit = 4096
+
 	s := newStyles()
 	working := spinner.New(
 		spinner.WithSpinner(spinner.Jump),
@@ -213,6 +243,7 @@ func New(cfg config.Config, cfgPath string, openPath string) tea.Model {
 		renamePrompt: renamePrompt,
 		findPrompt:   findPrompt,
 		jumpPrompt:   jumpPrompt,
+		llmPrompt:    llmPrompt,
 		working:      working,
 		editor:       ta,
 		preview:      viewport.New(0, 0),
@@ -234,7 +265,7 @@ func New(cfg config.Config, cfgPath string, openPath string) tea.Model {
 }
 
 func (m model) Init() tea.Cmd {
-	return tea.Batch(textinput.Blink, tea.EnableMouseCellMotion)
+	return tea.Batch(textinput.Blink, tea.EnableMouseCellMotion, autoLockTick())
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -246,6 +277,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.renderPreview()
 		m.renderHelp()
 	case tea.MouseMsg:
+		if m.enforceAutoLock() {
+			return m, textinput.Blink
+		}
+		m.recordActivity()
 		if m.mode == modeWrite && m.mouseCapture {
 			return m.updateMouse(msg)
 		}
@@ -253,6 +288,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.String() == "ctrl+c" {
 			return m, tea.Quit
 		}
+		if m.enforceAutoLock() {
+			return m, textinput.Blink
+		}
+		m.recordActivity()
 		if m.mode == modeVaultPicker {
 			return m.updateVaultPicker(msg)
 		}
@@ -297,6 +336,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.mode == modeJumpPage {
 			return m.updateJumpPage(msg)
+		}
+		if m.isLLMConfigMode() {
+			return m.updateLLMConfig(msg)
 		}
 		if m.mode == modeImporting {
 			return m, nil
@@ -346,12 +388,76 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.err = err.Error()
 		}
 		return m, nil
+	case llmModelsMsg:
+		return m.handleLLMModelsMsg(msg)
 	case spinner.TickMsg:
-		if m.mode == modeGenerating || m.mode == modeImporting || m.aiBusy {
+		if m.mode == modeGenerating || m.mode == modeImporting || m.mode == modeLLMLoading || m.aiBusy {
 			var cmd tea.Cmd
 			m.working, cmd = m.working.Update(msg)
 			return m, cmd
 		}
+	case autoLockTickMsg:
+		if m.enforceAutoLock() {
+			return m, tea.Batch(textinput.Blink, autoLockTick())
+		}
+		return m, autoLockTick()
 	}
 	return m, nil
+}
+
+func (m *model) enforceAutoLock() bool {
+	if m.store == nil || !m.store.AutoLockExpired() {
+		return false
+	}
+	if m.dirty {
+		m.save()
+		if m.err != "" {
+			m.store.UpdateActivity()
+			m.status = "auto-lock delayed until current document saves"
+			return false
+		}
+	}
+	m.store.Lock()
+	m.applyAutoLock()
+	return true
+}
+
+func autoLockTick() tea.Cmd {
+	return tea.Tick(30*time.Second, func(time.Time) tea.Msg {
+		return autoLockTickMsg{}
+	})
+}
+
+func (m *model) recordActivity() {
+	if m.store != nil && m.store.Unlocked() {
+		m.store.UpdateActivity()
+	}
+}
+
+func (m *model) applyAutoLock() {
+	m.mode = modeVault
+	m.focus = focusEditor
+	m.password.SetValue("")
+	m.password.Focus()
+	m.pendingPass = ""
+	m.confirmPass.SetValue("")
+	m.editor.SetValue("")
+	m.preview.SetContent("")
+	m.tree = nil
+	m.treeIdx = 0
+	m.treeOffset = 0
+	m.eyesOnlyPaths = map[string]bool{}
+	m.filePath = ""
+	m.diskPath = ""
+	m.vaultPath = ""
+	m.vaultID = ""
+	m.isVault = false
+	m.eyesOnly = false
+	m.selectionMode = false
+	m.selecting = false
+	m.mouseCapture = true
+	m.dirty = false
+	m.prepareVaultPassword()
+	m.status = "vault auto-locked"
+	m.err = "vault auto-locked after inactivity"
 }

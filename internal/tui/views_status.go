@@ -101,6 +101,16 @@ func (m model) modeName() string {
 		return "jump"
 	case modeImporting:
 		return "import"
+	case modeLLMProvider:
+		return "llm"
+	case modeLLMServer:
+		return "llm"
+	case modeLLMLoading:
+		return "llm"
+	case modeLLMModel:
+		return "llm"
+	case modeLLMContext:
+		return "llm"
 	default:
 		return m.viewName()
 	}
@@ -171,6 +181,15 @@ func (m model) helpText() string {
 	if m.mode == modeImporting {
 		return "importing in background | ctrl+c quit"
 	}
+	if m.isLLMConfigMode() {
+		if m.mode == modeLLMServer || (m.mode == modeLLMModel && (m.llmDraft.FetchErr != "" || len(m.llmDraft.Models) == 0)) {
+			return "enter continue | esc cancel | ctrl+c quit"
+		}
+		if m.mode == modeLLMLoading {
+			return "fetching models | esc cancel | ctrl+c quit"
+		}
+		return "up/down select | enter continue | esc cancel | ctrl+c quit"
+	}
 	target := "vault"
 	if !m.isVault && m.filePath != "" {
 		target = fmt.Sprintf("disk:%s", m.filePath)
@@ -191,5 +210,5 @@ func (m model) helpText() string {
 	if m.eyesOnly {
 		eyes = " eyes-only"
 	}
-	return mode + eyes + " " + tree + " " + mouse + " | tab focus | enter open | ^S " + target + " | ^P AI | alt+O eyes | ^K commands | ^C"
+	return mode + eyes + " " + tree + " " + mouse + " | tab focus | enter open | ^S " + target + " | ^P AI | ^L llm | alt+O eyes | ^K commands | ^C"
 }

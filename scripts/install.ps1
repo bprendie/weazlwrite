@@ -15,7 +15,7 @@ $GoModCache = if ($env:GOMODCACHE) { $env:GOMODCACHE } else { Join-Path $RepoRoo
 $MsysRoot = if ($env:WEAZLWRITE_MSYS_ROOT) { $env:WEAZLWRITE_MSYS_ROOT } else { "C:\msys64" }
 $MsysGccBin = Join-Path $MsysRoot "ucrt64\bin"
 $MsysPacman = Join-Path $MsysRoot "usr\bin\pacman.exe"
-$RequiredGo = ((Select-String -Path (Join-Path $RepoRoot "go.mod") -Pattern '^go\s+([0-9]+\.[0-9]+)' | Select-Object -First 1).Matches.Groups[1].Value)
+$RequiredGo = "1.25.10"
 
 function Add-ToCurrentPath($Path) {
     if (-not ($env:Path.Split(';') -contains $Path)) {
@@ -42,7 +42,7 @@ function Get-GoVersion {
     if ($LASTEXITCODE -ne 0 -or -not $raw) {
         return $null
     }
-    if ($raw -match 'go([0-9]+\.[0-9]+)') {
+    if ($raw -match 'go([0-9]+\.[0-9]+(?:\.[0-9]+)?)') {
         return [version]$Matches[1]
     }
     return $null

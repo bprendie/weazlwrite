@@ -16,6 +16,7 @@ On first launch, WeazlWrite drops a fresh `config.json` into the local app confi
 - `local-vllm`: `http://localhost:8000`
 - model: `local-model`
 - `local-ollama`: `http://localhost:11434`
+- vault auto-lock: 15 minutes
 
 Because hardcoding endpoints into a writing tool is how tiny annoyances become permanent roommates, WeazlWrite reads the endpoint and model from the config at runtime.
 
@@ -64,7 +65,7 @@ Set `WEAZLWRITE_SKIP_LAUNCH=1` or pass `-SkipLaunch` to install and configure wi
 
 ## Build From Source
 
-WeazlWrite is a Go app, but it uses SQLite through `go-sqlite3`. Builds require Go 1.25 or newer, CGO, and a working C compiler. It is built to run on solid, reliable standards-based systems like Ubuntu LTS. That C compiler requirement is the one little bit of yak hair you have to shave.
+WeazlWrite is a Go app, but it uses SQLite through `go-sqlite3`. Builds require Go 1.25.10 or newer, CGO, and a working C compiler. It is built to run on solid, reliable standards-based systems like Ubuntu LTS. That C compiler requirement is the one little bit of yak hair you have to shave.
 
 ```sh
 go build -o weazlwrite ./cmd/weazlwrite
@@ -119,6 +120,8 @@ Each vault is an encrypted SQLite database disguised as a note tree. Save someth
 
 On startup, WeazlWrite scans the vault directory and throws a vault picker. On Linux/macOS that is `~/.weazlwrite/vault`; on Windows it is `%APPDATA%\weazlwrite\vault`. Pick an existing vault, or press `n` to spin up a new context. New vaults require password confirmation before the database is forged. The selected vault path locks into your config, but the picker stays available on launch so context switching stays cheap.
 
+Unlocked vaults auto-lock after 15 minutes of inactivity by default. Set `vault.auto_lock_minutes` in `config.json` to another positive number, or `0` to disable auto-lock.
+
 The left rail splits your brain in two: `Vault` for the encrypted underground, and `Files` for regular surface-level filesystem work. The active note gets a tiny marker so you know exactly where you are without the tree turning into a blinking holiday display. A `*` means the current buffer has unsaved changes.
 
 Big directories are fine. Move with `j` / `k`, the arrow keys, `pgup` / `pgdown`, or the mouse wheel; the tree keeps the selected row in view instead of pretending the world ends at the bottom of the pane.
@@ -159,6 +162,8 @@ WeazlWrite is strictly local-first and built for paranoia, but it is a TUI app, 
 
 - Vault databases live locally under `~/.weazlwrite/vault` on Linux/macOS or `%APPDATA%\weazlwrite\vault` on Windows.
 - Vault payloads are encrypted with AES-GCM after unlock.
+- Failed vault password attempts are rate-limited with increasing in-memory backoff delays.
+- Unlocked vault sessions auto-lock after the configured inactivity timeout and clear visible document content.
 - API keys belong in your local config, nowhere else.
 - Filesystem saves are plain files. Vault saves are encrypted records. Choose accordingly.
 

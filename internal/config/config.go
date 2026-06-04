@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 )
 
 const appName = "weazlwrite"
@@ -31,7 +32,8 @@ type Database struct {
 }
 
 type Vault struct {
-	Root string `json:"root"`
+	Root            string `json:"root"`
+	AutoLockMinutes *int   `json:"auto_lock_minutes"`
 }
 
 type UI struct {
@@ -108,7 +110,10 @@ func Default() Config {
 			},
 		},
 		Database: Database{Path: filepath.Join(dataDir, "vault", "weazlwrite.sqlite3")},
-		Vault:    Vault{Root: filepath.Join(dataDir, "vault")},
+		Vault: Vault{
+			Root:            filepath.Join(dataDir, "vault"),
+			AutoLockMinutes: intPtr(15),
+		},
 		UI: UI{
 			RenderMarkdown: boolPtr(true),
 			MarkdownStyle:  "dark",
@@ -135,6 +140,9 @@ func (c *Config) withDefaults() {
 	}
 	if c.Vault.Root == "" {
 		c.Vault.Root = def.Vault.Root
+	}
+	if c.Vault.AutoLockMinutes == nil {
+		c.Vault.AutoLockMinutes = def.Vault.AutoLockMinutes
 	}
 	legacy := legacyDefault()
 	if c.Database.Path == legacy.Database.Path {
@@ -166,7 +174,18 @@ func (ui UI) MarkdownEnabled() bool {
 	return ui.RenderMarkdown == nil || *ui.RenderMarkdown
 }
 
+func (v Vault) AutoLockTimeout() time.Duration {
+	if v.AutoLockMinutes == nil || *v.AutoLockMinutes <= 0 {
+		return 0
+	}
+	return time.Duration(*v.AutoLockMinutes) * time.Minute
+}
+
 func boolPtr(v bool) *bool {
+	return &v
+}
+
+func intPtr(v int) *int {
 	return &v
 }
 

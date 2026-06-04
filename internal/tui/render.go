@@ -47,6 +47,8 @@ func (m model) View() string {
 		body = m.jumpPageView()
 	} else if m.mode == modeImporting {
 		body = m.importingView()
+	} else if m.isLLMConfigMode() {
+		body = m.llmConfigView()
 	} else {
 		body = m.writeView()
 	}
