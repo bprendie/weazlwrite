@@ -6,6 +6,23 @@ This plan makes the writing surface first-class: a real keymap, soft word wrap t
 
 Nothing below is decided except the direction. Phase 1 (keymap) is the discussion we should have before any wrap work, because wrap navigation is useless if the chords still belong to a form widget.
 
+## Required after every change
+
+Do not leave a phase or patch at tests-only. After any code change:
+
+1. Build both repo binaries.
+2. Install them over the copies on `PATH`.
+
+```sh
+go test ./...
+go build -o weazlwrite ./cmd/weazlwrite
+go build -o weazlwrite-setup ./cmd/weazlwrite-setup
+install -m 755 weazlwrite "$HOME/.weazlwrite/bin/weazlwrite"
+install -m 755 weazlwrite-setup "$HOME/.weazlwrite/bin/weazlwrite-setup"
+```
+
+The installed app is `$HOME/.weazlwrite/bin/weazlwrite`, which is what the shell runs. A repo-local `weazlwrite` that is not copied there does not count as done. If a change only touches `cmd/weazlwrite` / `internal/tui`, still build and install `weazlwrite`; install `weazlwrite-setup` as well whenever setup code changed, and always when doing a full phase close-out.
+
 ## Current Shape
 
 Edit mode is Charmbracelet `textarea` in `internal/tui`. Resize sets width/height to the main panel. App keys are intercepted in `updateWrite` *before* focus is considered, then leftovers go to `editor.Update`.
@@ -233,6 +250,8 @@ Do not start Phase 3 until Phase 1 is agreed. Do not start Phase 6 until someone
 7. **Stay on `textarea`?** Phase 2–4 try to keep it. If visual wrap mapping cannot match the widget, replacing it becomes the plan, not a side quest.
 
 ## Manual smoke after each phase
+
+Build and install first (see Required after every change). Smoke the installed binary, not only `go run`.
 
 - Type a 200-line note; Enter still works.
 - A long prose paragraph wraps in edit mode; cursor up/down stays in the paragraph.
