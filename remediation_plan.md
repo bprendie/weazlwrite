@@ -79,7 +79,7 @@ Non-goals for this pass: undo/redo, Markdown hanging indent, a preferred wrap co
 
 Arrows, Backspace, Delete, Enter, `ctrl+a`, `ctrl+u`, `ctrl+w`, and Home/End in the editor already reach `textarea`. Home/End are logical-line, not visual-line; that is a wrap bug, not a keymap bug.
 
-### Proposed rule
+### Locked rule
 
 Split the keymap by focus.
 
@@ -89,7 +89,7 @@ Split the keymap by focus.
 
 Do not globally intercept a chord that the editor needs. Intercept it only when the editor is not focused, or move the app command.
 
-### Proposed chords
+### Locked chords
 
 Keep (no collision, or collision we accept):
 
@@ -112,7 +112,7 @@ Keep (no collision, or collision we accept):
 
 Move:
 
-| Today | Proposed | Restore to editor |
+| Today | Locked | Restore to editor |
 |---|---|---|
 | `ctrl+v` save vault | `alt+v` | paste |
 | `alt+f` save filesystem | `alt+d` | word forward |
@@ -143,9 +143,7 @@ Tests to add or retarget:
 - `tab` still cycles panes.
 - `h` still types in the editor and still opens help from the tree.
 
-### Discuss before coding
-
-See Open Questions. The table above is a proposal, not a lock.
+Design for this phase is locked. See Locked decisions.
 
 ## Phase 2 — Make `textarea` a document widget
 
@@ -237,7 +235,7 @@ Phase 1 keymap  →  Phase 2 uncap widget  →  Phase 3 visual paging
 
 Phase 5 depends on Phase 3 coordinates. It can start as soon as that mapping is honest; it should not wait on polish.
 
-Do not start Phase 3 until Phase 1 is agreed. Do not start Phase 6 until someone is hitting a real limit.
+Design is locked. Start a phase only on `phase N go`. Do not start Phase 6 until someone is hitting a real limit.
 
 ## Files that will move
 
@@ -249,16 +247,57 @@ Do not start Phase 3 until Phase 1 is agreed. Do not start Phase 6 until someone
 | 4 | `internal/tui/search_nav.go`, `selection.go` |
 | 5 | `internal/tui/input.go`, `selection.go`, wrap hit-test helper |
 
-## Open questions
+## Locked decisions
 
-1. **Save destinations.** `alt+v` vault and `alt+d` disk are symmetric with `alt+o` / `alt+i` / `alt+n`. Alternatives: `ctrl+shift+s` as a save-as chooser, or a small save menu from `ctrl+s` when there is no current target. `ctrl+s` should stay “save here.”
-2. **Find vs emacs `ctrl+f`.** Recommendation: keep find. Forward-char is already `right`.
-3. **Tab.** Keep pane cycle for now, or make Tab indent when the editor is focused and move pane cycle to `ctrl+tab`? `ctrl+tab` is often eaten by the terminal/tmux.
-4. **Help.** Dropping `ctrl+k` makes `f1` and `?` the documented help keys. Is `ctrl+k` as command palette (current help screen) worth keeping under another chord, e.g. `ctrl+shift+k`?
-5. **New note while writing.** Tree `n` already creates a document. Is `alt+n` needed, or is “leave the editor, press `n`” enough?
-6. **Wrap to pane vs wrap column.** Recommendation: pane width in this pass. A config column is Phase 6.
-7. **Stay on `textarea`?** Phase 2–4 try to keep it. If visual wrap mapping cannot match the widget, replacing it becomes the plan, not a side quest.
-8. **`ctrl+y` after live drag-select.** Keep a capture-off escape hatch for terminal copy on normal notes, or drop the mode. Eyes Only never disables capture.
+All 30 design questions answered 2026-09-01. Every pick was the recommended option.
+
+### Phase 1
+
+- `alt+v` save vault, `alt+d` save disk, `ctrl+s` save here.
+- Focus-aware routing: editor owns motion/edit while writing; tree/preview may reuse chords (e.g. `ctrl+e` enters edit from the tree).
+- Tab always cycles panes. Indent is later.
+- Help is `f1` and `?` only. Drop `ctrl+k`.
+- `alt+n` new vault note while writing. Tree `n` / `ctrl+n` unchanged.
+
+### Phase 2
+
+- Keep line numbers with a stable gutter for 999+.
+- Remove the extra `┃` prompt.
+- Preserve tabs on load. Do not rewrite a file on open+save.
+- `MaxHeight = 0`, `MaxWidth = 0`. Library 10k line cap remains.
+- Rewrap immediately when the tree steals width.
+
+### Phase 3
+
+- Home/End are visual-row. `ctrl+home` / `ctrl+end` are document top/bottom.
+- PageUp/PageDown are visual pages.
+- Status `page N/M` and `ctrl+g` use visual rows in edit, Glamour rows in preview.
+- If wrap cannot match `textarea`, stop and replace the widget. No two algorithms.
+- Unbreakable tokens hard-break at pane width. No horizontal scroll.
+
+### Phase 4
+
+- Find from cursor column, wrap around, say so in status.
+- No find-previous this phase.
+- Land the cursor on the match. No highlight chrome.
+- Wrap the selection overlay; still whole-line copy. Character ranges wait for Phase 5.
+- Successful find closes the prompt and focuses the editor. `ctrl+f` again continues from last query.
+
+### Phase 5
+
+- Click in the writing pane places the cursor.
+- Live drag selects a character range; release copies via OSC-52. Click without drag does not copy.
+- `ctrl+y` becomes a capture-off hatch on normal notes so the terminal can drag-select. Eyes Only never disables capture.
+- `ctrl+v` pastes at the cursor. Terminal bracketed paste still inserts.
+- Click on the tree selects the row under the cursor.
+
+### Phase 6 (later, not in this pass)
+
+- Undo later as `ctrl+z` / `ctrl+shift+z`. Do not build it in 1–5. Leave `ctrl+y` to mouse capture.
+- Always wrap to pane width. No config column.
+- No Markdown-aware wrap unless naive wrap is painful.
+- Never insert wrap newlines. Soft wrap only.
+- Stay on `textarea` until mapping fails, then replace.
 
 ## Manual smoke after each phase
 
