@@ -53,10 +53,11 @@ So there are three wrap models, and they do not share coordinates:
 1. While writing, motion and edit keys belong to the buffer.
 2. Long paragraphs wrap to the pane in edit mode. Cursor, Home/End, and page keys follow visual rows.
 3. Status page counts, `ctrl+g`, find, and selection use the same visual-row idea as the editor.
-4. Preview wrap stays as it is (Glamour). Do not make the editor Markdown-aware in the first pass.
-5. Files keep the author's hard newlines. Soft wrap is visual only.
+4. Mouse in the writing pane is a strong preference: click places the cursor, drag selects, wheel already scrolls. Keyboard remains complete for SSH and 80x24.
+5. Preview wrap stays as it is (Glamour). Do not make the editor Markdown-aware in the first pass.
+6. Files keep the author's hard newlines. Soft wrap is visual only.
 
-Non-goals for this pass: undo/redo, click-to-cursor, Markdown hanging indent, a preferred wrap column, hard-reflow-on-save, forking `textarea`.
+Non-goals for this pass: undo/redo, Markdown hanging indent, a preferred wrap column, hard-reflow-on-save, forking `textarea`.
 
 ## Phase 1 — Keymap ownership
 
@@ -195,18 +196,27 @@ Selection:
 - Drive `selectOffset` from visual scroll, not `editor.Line()`.
 - Eyes Only behavior stays: no copy.
 
-Do not invent a second mouse selection model until wrap display is honest.
+Fold mouse selection into the live editor once wrap coordinates exist. Do not keep a second truncated selection view as the long-term model.
 
-## Phase 5 — Editor interactions that wrap made visible
+## Phase 5 — Mouse editing and paste
 
-Only after 1–4 feel solid:
+Bubble Tea's `textarea` does not map clicks to a cursor. WeazlWrite already captures cell-motion (`tea.WithMouseCellMotion`) and already maps pane bounds (`mainContentBounds`). Wheel scroll and pane-focus-on-click work. What is missing is hit-testing a cell onto `(logical line, column)` after wrap.
 
-- Paste: `ctrl+v` should insert at the cursor (clipboard via existing `textarea` paste, or a WeazlWrite-owned paste if the library path is flaky in this terminal).
-- Click-to-cursor in the writing pane.
-- Word motion on `ctrl+left` / `ctrl+right` in addition to alt chords, if the terminal delivers them.
-- Indent decision: Tab in editor vs pane cycle.
+History: app mouse capture and terminal drag-select cannot both own the same events. `ctrl+y` first disabled capture so the terminal could copy; then in-app selection (`2745c66`) took over and never calls `DisableMouse`. Help text still talks about toggling capture off. Eyes Only must keep capture on so the terminal cannot harvest the buffer.
 
-Still out of scope here: undo/redo, Markdown hanging indent, wrap-column config.
+Once Phase 3 can map a visual cell:
+
+- Click in the writing pane places the cursor. Click on the tree still focuses/selects the tree.
+- Drag in the writing pane selects a character range on wrapped rows; release copies via the existing OSC-52 path.
+- Click without drag does not copy.
+- Eyes Only: click-to-cursor stays; copy on release is a no-op.
+- Wheel stays as it is.
+- Keyboard remains the full editor. Mouse is additive.
+- If hit-testing is wrong on a real terminal (tmux, SSH, odd padding), ship click-to-cursor only and keep the current selection mode as fallback. Do not guess.
+
+`ctrl+y` after this: either a true capture toggle for people who still want terminal select on non-Eyes-Only notes, or drop the mode if live drag-select is good enough. Decide after it works, not before.
+
+Also in this phase: paste at cursor (`ctrl+v` once Phase 1 frees it), and `ctrl+left` / `ctrl+right` if the terminal delivers them. Indent/Tab remains a separate decision.
 
 ## Phase 6 — Optional, later
 
@@ -222,10 +232,10 @@ Still out of scope here: undo/redo, Markdown hanging indent, wrap-column config.
 ```
 Phase 1 keymap  →  Phase 2 uncap widget  →  Phase 3 visual paging
                                               ↓
-                                    Phase 4 find/selection wrap
-                                              ↓
-                                    Phase 5 paste / click / indent
+                         Phase 4 find/selection wrap   Phase 5 click-to-cursor + drag-select
 ```
+
+Phase 5 depends on Phase 3 coordinates. It can start as soon as that mapping is honest; it should not wait on polish.
 
 Do not start Phase 3 until Phase 1 is agreed. Do not start Phase 6 until someone is hitting a real limit.
 
@@ -237,7 +247,7 @@ Do not start Phase 3 until Phase 1 is agreed. Do not start Phase 6 until someone
 | 2 | `internal/tui/model.go`, `layout_state.go`, `styles.go`, tests |
 | 3 | `internal/tui/search_nav.go`, new wrap helper, `input.go` Home/End |
 | 4 | `internal/tui/search_nav.go`, `selection.go` |
-| 5 | `internal/tui/input.go`, mouse path in `input.go` |
+| 5 | `internal/tui/input.go`, `selection.go`, wrap hit-test helper |
 
 ## Open questions
 
@@ -248,6 +258,7 @@ Do not start Phase 3 until Phase 1 is agreed. Do not start Phase 6 until someone
 5. **New note while writing.** Tree `n` already creates a document. Is `alt+n` needed, or is “leave the editor, press `n`” enough?
 6. **Wrap to pane vs wrap column.** Recommendation: pane width in this pass. A config column is Phase 6.
 7. **Stay on `textarea`?** Phase 2–4 try to keep it. If visual wrap mapping cannot match the widget, replacing it becomes the plan, not a side quest.
+8. **`ctrl+y` after live drag-select.** Keep a capture-off escape hatch for terminal copy on normal notes, or drop the mode. Eyes Only never disables capture.
 
 ## Manual smoke after each phase
 
@@ -261,3 +272,4 @@ Build and install first (see Required after every change). Smoke the installed b
 - `h` types in the editor.
 - Preview wrap still looks like Markdown, not like the editor.
 - A tab-indented file does not silently reindent on open+save.
+- Click in the editor places the cursor; drag copies (OSC-52); Eyes Only click works and copy does not.
