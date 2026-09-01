@@ -235,7 +235,7 @@ func (m model) editorDragView(width, height int) string {
 		for ri, row := range rows {
 			trimmed := []rune(strings.TrimRight(string(row), " "))
 			if vis >= offset && len(out) < height {
-				gutter := formatGutter(li+1, editorGutterWidth)
+				gutter := styleGutter(formatGutter(li+1, editorGutterWidth))
 				if ri > 0 {
 					gutter = strings.Repeat(" ", editorGutterWidth)
 				}

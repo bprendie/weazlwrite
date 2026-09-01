@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Color editor line numbers with the same violet as tree folders.
 - Undo/redo with `ctrl+z` / `ctrl+shift+z`. Wrap stays soft and follows the pane; Markdown is not hard-wrapped on save.
 - Click in the editor places the cursor; drag copies a character range. Click the tree to select a row. `ctrl+y` turns app mouse capture off so the terminal can select text. Eyes Only still blocks copy.
 - Find from the caret, including later matches on the same line, and wrap around with a status note. Selection overlay wraps long lines and still copies whole logical lines.

@@ -77,4 +77,15 @@ func TestGutterHasStableWidth(t *testing.T) {
 	if len(got) != editorGutterWidth {
 		t.Fatalf("gutter 9999 = %q width %d, want %d", got, len(got), editorGutterWidth)
 	}
+	if w := lipgloss.Width(styleGutter(got)); w != editorGutterWidth {
+		t.Fatalf("styled gutter width = %d, want %d", w, editorGutterWidth)
+	}
+}
+
+func TestEditorPromptUsesTreeFolderPurple(t *testing.T) {
+	ed := newDocumentEditor()
+	s := newStyles()
+	if ed.FocusedStyle.Prompt.GetForeground() != s.treeFolder.GetForeground() {
+		t.Fatalf("editor prompt color = %v, want tree folder %v", ed.FocusedStyle.Prompt.GetForeground(), s.treeFolder.GetForeground())
+	}
 }

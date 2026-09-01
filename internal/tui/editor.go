@@ -18,6 +18,14 @@ type editorChrome struct {
 	prompts []string
 }
 
+func gutterColor() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(neonViolet)
+}
+
+func styleGutter(s string) string {
+	return gutterColor().Render(s)
+}
+
 func (c *editorChrome) prompt(i int) string {
 	if c == nil {
 		return ""
@@ -70,8 +78,11 @@ func newDocumentEditor() textarea.Model {
 	ta.Prompt = ""
 	ta.KeyMap = newEditorKeyMap()
 	ta.FocusedStyle.CursorLine = lipgloss.NewStyle().Background(panelAlt)
-	ta.FocusedStyle.LineNumber = lipgloss.NewStyle().Foreground(muted)
+	ta.FocusedStyle.LineNumber = gutterColor()
+	ta.FocusedStyle.Prompt = gutterColor()
 	ta.BlurredStyle.CursorLine = lipgloss.NewStyle().Foreground(muted)
+	ta.BlurredStyle.LineNumber = gutterColor()
+	ta.BlurredStyle.Prompt = gutterColor()
 	ta.FocusedStyle.Base = lipgloss.NewStyle().Foreground(ink).Background(panel)
 	ta.BlurredStyle.Base = lipgloss.NewStyle().Foreground(ink).Background(panel)
 	return ta
