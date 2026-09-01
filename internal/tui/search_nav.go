@@ -134,7 +134,7 @@ func (m *model) jumpToPage(page int) {
 	if m.view == viewRender {
 		m.preview.SetYOffset((page - 1) * max(1, m.preview.Height))
 	} else {
-		m.moveEditorToLine((page - 1) * max(1, m.editor.Height()))
+		m.moveEditorToVisualRow((page - 1) * max(1, m.editor.Height()))
 	}
 	m.err = ""
 	m.status = fmt.Sprintf("page %d of %d", m.currentPage(), m.totalPages())
@@ -144,14 +144,27 @@ func (m model) currentPage() int {
 	if m.view == viewRender {
 		return min(max(1, m.preview.YOffset/max(1, m.preview.Height)+1), max(1, m.totalPages()))
 	}
-	return min(max(1, m.editor.Line()/max(1, m.editor.Height())+1), max(1, m.totalPages()))
+	return min(max(1, m.editorVisualRow()/max(1, m.editor.Height())+1), max(1, m.totalPages()))
 }
 
 func (m model) totalPages() int {
 	if m.view == viewRender {
 		return max(1, (m.preview.TotalLineCount()+max(1, m.preview.Height)-1)/max(1, m.preview.Height))
 	}
-	return max(1, (m.editor.LineCount()+max(1, m.editor.Height())-1)/max(1, m.editor.Height()))
+	h := max(1, m.editor.Height())
+	return max(1, (m.editorVisualRowCount()+h-1)/h)
+}
+
+func (m model) editorWrapWidth() int {
+	return max(1, m.editor.Width())
+}
+
+func (m model) editorVisualRowCount() int {
+	return visualRowCount(m.editor.Value(), m.editorWrapWidth())
+}
+
+func (m model) editorVisualRow() int {
+	return cursorVisualRow(m.editor.Value(), m.editor.Line(), m.editor.LineInfo().RowOffset, m.editorWrapWidth())
 }
 
 func (m *model) moveEditorToLine(line int) {
@@ -165,12 +178,20 @@ func (m *model) moveEditorToLine(line int) {
 	m.editor.SetCursor(0)
 }
 
+func (m *model) moveEditorToVisualRow(target int) {
+	total := m.editorVisualRowCount()
+	target = min(max(0, target), max(0, total-1))
+	line, offset := logicalAtVisualRow(m.editor.Value(), target, m.editorWrapWidth())
+	m.moveEditorToLine(line)
+	for i := 0; i < offset; i++ {
+		m.editor.CursorDown()
+	}
+}
+
 func (m *model) editorPageUp() {
-	target := max(0, m.editor.Line()-max(1, m.editor.Height()))
-	m.moveEditorToLine(target)
+	m.moveEditorToVisualRow(m.editorVisualRow() - max(1, m.editor.Height()))
 }
 
 func (m *model) editorPageDown() {
-	target := min(max(0, m.editor.LineCount()-1), m.editor.Line()+max(1, m.editor.Height()))
-	m.moveEditorToLine(target)
+	m.moveEditorToVisualRow(m.editorVisualRow() + max(1, m.editor.Height()))
 }

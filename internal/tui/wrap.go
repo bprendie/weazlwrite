@@ -73,12 +73,40 @@ func repeatRunes(r rune, n int) []rune {
 }
 
 func visualRowCount(value string, width int) int {
-	if value == "" {
-		return 1
-	}
 	n := 0
 	for _, line := range strings.Split(value, "\n") {
 		n += len(wrapRunes([]rune(line), width))
 	}
+	if n < 1 {
+		return 1
+	}
 	return n
+}
+
+func cursorVisualRow(value string, logicalLine, rowOffset, width int) int {
+	row := 0
+	lines := strings.Split(value, "\n")
+	limit := min(max(0, logicalLine), max(0, len(lines)-1))
+	for i := 0; i < limit; i++ {
+		row += len(wrapRunes([]rune(lines[i]), width))
+	}
+	return row + max(0, rowOffset)
+}
+
+func logicalAtVisualRow(value string, target, width int) (line, offset int) {
+	if target < 0 {
+		target = 0
+	}
+	lines := strings.Split(value, "\n")
+	vis := 0
+	for i, ln := range lines {
+		h := len(wrapRunes([]rune(ln), width))
+		if vis+h > target {
+			return i, target - vis
+		}
+		vis += h
+		line = i
+		offset = max(0, h-1)
+	}
+	return line, offset
 }
