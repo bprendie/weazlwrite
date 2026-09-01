@@ -4,7 +4,7 @@
 
 A sovereign text editor for a paranoid age. WeazlWrite is a private, local-first Markdown writing TUI for vLLM and Ollama servers. Think of it as a quiet terminal desk for drafts, docs, notes, and little technical spells, backed by an encrypted vault tucked under the floorboards.
 
-No web wrappers, no account portals, no telemetry drops, and no browser tabs breeding in the background. Just your files, your vaults, your models, and the blinking cursor.
+No web wrappers, no account portals, no telemetry drops, and no browser tabs breeding in the background. Just your files, your vaults, your models, and a cursor that actually belongs to the buffer.
 
 ## Defaults
 
@@ -115,6 +115,9 @@ $env:WEAZLWRITE_DATA = "C:\path\to\data"
 - `?` or `h`: open the full help screen when not typing in the editor
 - `pgup` / `pgdown`: page the focused tree, editor, or render pane
 - mouse wheel: scroll the tree or active writing surface
+- click in the editor: place the cursor
+- drag in the editor: copy the selected range
+- click in the tree: select that row
 - `ctrl+c`: quit
 
 ## Vault And Files
@@ -127,17 +130,17 @@ Unlocked vaults auto-lock after 15 minutes of inactivity by default. Set `vault.
 
 The left rail splits your brain in two: `Vault` for the encrypted underground, and `Files` for regular surface-level filesystem work. The active note gets a tiny marker so you know exactly where you are without the tree turning into a blinking holiday display. A `*` means the current buffer has unsaved changes.
 
-Big directories are fine. Move with `j` / `k`, the arrow keys, `pgup` / `pgdown`, or the mouse wheel; the tree keeps the selected row in view instead of pretending the world ends at the bottom of the pane.
+Big directories are fine. Move with `j` / `k`, the arrow keys, `pgup` / `pgdown`, the mouse wheel, or a click on the row you meant; the tree keeps the selected row in view instead of pretending the world ends at the bottom of the pane. Long names get truncated instead of wrapping the whole rail into a ransom note.
 
-Tree chores happen right where your cursor is. Press `n` to create a new document in the selected folder, then type the path before it is created. Press `ctrl+n` for a new folder, `d` to delete a selected file or empty folder, and `r` to rename or move. Press `space` to pick up a file, navigate, and press `space` again to drop it. Folders fold and unfold with `enter`.
+Tree chores happen right where your cursor is. Press `n` to create a new document in the selected folder, then type the path before it is created. Press `ctrl+n` for a new folder, `d` to delete a selected file or empty folder, and `r` to rename or move. Press `space` to pick up a file, navigate, and press `space` again to drop it. Folders fold and unfold with `enter`. While you are already writing, `alt+n` drops a new untitled vault note without making you wander back to the tree.
 
 Press `alt+v` to save the current buffer into the encrypted vault. Press `alt+d` to save it out to the regular filesystem. Press `ctrl+s` when you simply want to save back to wherever the current note already lives.
 
 To pull existing surface files into the encrypted vault, select a `.md`, `.markdown`, `.txt`, `.pdf`, or `.docx` file and press `i`. Select a folder and press `i` to bulk-import it as a vault root, perfect for absorbing Obsidian vaults that already live on disk. Word and PDF files are aggressively stripped down and converted to pure Markdown before encryption. Image-only PDFs and image-only Word files are rejected because there is no text to harvest.
 
-Long documents get simple navigation help. `pgup` / `pgdown` page through the current edit or render pane, `ctrl+g` jumps to a page number, and `ctrl+f` finds text from your current position.
+The writing surface is a real buffer, not a form widget wearing a trench coat. Long lines wrap to the pane. The file keeps the newlines you typed; WeazlWrite will not reflow your Markdown on save, and it will not expand tabs just because you opened a note. Home and End jump the paragraph. `pgup` / `pgdown` move by what is on screen. `ctrl+z` undoes a burst of typing; `ctrl+shift+z` puts it back. `ctrl+v` pastes at the cursor. `ctrl+f` finds from where you are, including a second hit on the same line, and it will loop the document if it has to.
 
-Drag in the writing pane to copy a character range; click without dragging only moves the cursor. Mouse scrolling and terminal drag-selection fight over the same events, so press `ctrl+y` to turn app mouse capture off, select/copy with your terminal, then press `ctrl+y` again to restore app mouse.
+Drag in the writing pane to copy a character range; click without dragging only moves the cursor. Mouse scrolling and terminal drag-selection still fight over the same events, so press `ctrl+y` when you want the terminal to own the mouse, then press `ctrl+y` again when you want WeazlWrite's click, drag, and wheel back.
 
 ## Eyes Only Mode
 
@@ -145,7 +148,7 @@ Some notes belong in the vault, not lingering in your system clipboard. Eyes Onl
 
 Hit `o` from the tree, or `alt+o` while the vault note is open. Eyes Only files glow high-alert orange in the tree, so you know exactly what you're dealing with before you hit enter.
 
-When an Eyes Only note is live, WeazlWrite hijacks terminal mouse capture and kills the `ctrl+y` selection toggle. You can read the file, grind out edits, and save it back to the encrypted vault, but you absolutely cannot switch into terminal drag-selection mode to copy blocks of text out.
+When an Eyes Only note is live, WeazlWrite keeps app mouse capture on, ignores `ctrl+y`, and refuses to copy on drag-release. You can read the file, grind out edits, and save it back to the encrypted vault. You cannot casually harvest the buffer into a clipboard.
 
 Dropping the shield requires actual intent. Press `o` or `alt+o` and explicitly confirm the warning prompt before the note returns to standard behavior.
 
@@ -155,9 +158,9 @@ That split rail is the entire point: draft in the open when the code belongs in 
 
 ## Markdown And AI
 
-Edit mode is for grinding out text. Render mode is for reading it back without syntax shouting over the prose. WeazlWrite is built on the beautiful Bubble Tea UI framework and uses Glamour so headings, code blocks, and tables keep their terminal-native shape without turning your TUI into a bloated browser.
+Edit mode is for grinding out text. Render mode is for reading it back without syntax shouting over the prose. WeazlWrite is built on the beautiful Bubble Tea UI framework and uses Glamour so headings, code blocks, and tables keep their terminal-native shape without turning your TUI into a bloated browser. Line numbers in the editor wear the same violet as the folders in the tree, because matching chrome is not the same thing as growing a UI.
 
-Need a generated Markdown block? Press `alt+i`, describe the spell, and WeazlWrite hits your configured local model for the exact insertable text. While the model grinds, terminal spinners and rotating Weazl-style status phrases keep the screen alive so you know the hardware is working.
+Need a generated Markdown block? Press `alt+i`, describe the spell, and WeazlWrite hits your configured local model for the exact insertable text. The model judges. The Go app inserts. While it grinds, terminal spinners and rotating Weazl-style status phrases keep the screen alive so you know the hardware is working. `ctrl+z` will take the insert back if the spell was a dud.
 
 ## Security
 
