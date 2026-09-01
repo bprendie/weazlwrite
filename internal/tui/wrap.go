@@ -110,3 +110,33 @@ func logicalAtVisualRow(value string, target, width int) (line, offset int) {
 	}
 	return line, offset
 }
+
+func runeIndexAtVisual(line string, rowOff, colX, width int) int {
+	runes := []rune(line)
+	rows := wrapRunes(runes, width)
+	if len(rows) == 0 {
+		return 0
+	}
+	rowOff = min(max(0, rowOff), len(rows)-1)
+	idx := 0
+	for r := 0; r < rowOff; r++ {
+		n := len([]rune(strings.TrimRight(string(rows[r]), " ")))
+		idx += n
+		if idx < len(runes) && unicode.IsSpace(runes[idx]) {
+			idx++
+		}
+	}
+	x := 0
+	for _, r := range []rune(strings.TrimRight(string(rows[rowOff]), " ")) {
+		w := rw.RuneWidth(r)
+		if x >= colX {
+			break
+		}
+		if x+w > colX && x > 0 {
+			break
+		}
+		x += w
+		idx++
+	}
+	return min(max(0, idx), len(runes))
+}

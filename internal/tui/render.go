@@ -103,6 +103,9 @@ func (m model) writeView() string {
 	if m.view == viewRender {
 		mainContent = m.preview.View()
 	}
+	if m.editorDrag && !m.dragStart.eq(m.dragEnd) && m.view == viewEdit {
+		mainContent = m.editorDragView(contentWidth(m.styles.activePanel, mainW), contentHeight(m.styles.activePanel, innerH))
+	}
 	if m.selectionMode {
 		mainContent = m.selectionView(contentWidth(m.styles.activePanel, mainW), contentHeight(m.styles.activePanel, innerH))
 	}

@@ -203,8 +203,8 @@ func (m model) helpText() string {
 		tree = "tree:off"
 	}
 	mouse := "mouse:on"
-	if m.selectionMode {
-		mouse = "select:on"
+	if !m.mouseCapture {
+		mouse = "mouse:off"
 	}
 	eyes := ""
 	if m.eyesOnly {

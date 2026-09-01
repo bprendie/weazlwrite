@@ -107,7 +107,7 @@ $env:WEAZLWRITE_DATA = "C:\path\to\data"
 - `ctrl+f`: find text in the current pane
 - `ctrl+g`: jump to a page in the current pane
 - `alt+i`: ask the local model to insert a Markdown block
-- `ctrl+y`: in-app selection mode; drag in the writing pane to copy
+- `ctrl+y`: toggle app mouse capture; off lets the terminal drag-select text
 - `alt+o`: toggle Eyes Only on the current vault note
 - `f1`: open the full command popup
 - `?` or `h`: open the full help screen when not typing in the editor
@@ -135,7 +135,7 @@ To pull existing surface files into the encrypted vault, select a `.md`, `.markd
 
 Long documents get simple navigation help. `pgup` / `pgdown` page through the current edit or render pane, `ctrl+g` jumps to a page number, and `ctrl+f` finds text from your current position.
 
-Copying text is deliberate. Mouse scrolling and terminal drag-selection fight over the same events, so press `ctrl+y` to turn mouse capture off, select/copy text from the editor or renderer with your terminal, then press `ctrl+y` again to restore mouse scrolling.
+Drag in the writing pane to copy a character range; click without dragging only moves the cursor. Mouse scrolling and terminal drag-selection fight over the same events, so press `ctrl+y` to turn app mouse capture off, select/copy with your terminal, then press `ctrl+y` again to restore app mouse.
 
 ## Eyes Only Mode
 

@@ -63,6 +63,19 @@ type selectPoint struct {
 	row int
 }
 
+type textPos struct {
+	line int
+	col  int
+}
+
+func (a textPos) eq(b textPos) bool {
+	return a.line == b.line && a.col == b.col
+}
+
+func (a textPos) less(b textPos) bool {
+	return a.line < b.line || (a.line == b.line && a.col < b.col)
+}
+
 type model struct {
 	cfg           config.Config
 	cfgPath       string
@@ -117,6 +130,9 @@ type model struct {
 	selectOffset  int
 	selectStart   selectPoint
 	selectEnd     selectPoint
+	editorDrag    bool
+	dragStart     textPos
+	dragEnd       textPos
 	dirty         bool
 	aiBusy        bool
 	generatingAt  time.Time
@@ -456,6 +472,7 @@ func (m *model) applyAutoLock() {
 	m.eyesOnly = false
 	m.selectionMode = false
 	m.selecting = false
+	m.editorDrag = false
 	m.mouseCapture = true
 	m.dirty = false
 	m.prepareVaultPassword()

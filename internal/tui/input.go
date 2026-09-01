@@ -131,50 +131,6 @@ func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m model) updateMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
-	mouse := tea.MouseEvent(msg)
-	if m.selectionMode {
-		return m.updateSelectionMouse(mouse)
-	}
-	if msg.Action == tea.MouseActionPress && !mouse.IsWheel() {
-		m.setFocus(m.focusAtX(msg.X))
-		return m, nil
-	}
-	if !mouse.IsWheel() {
-		return m, nil
-	}
-
-	target := m.focusAtX(msg.X)
-	if target == focusTree {
-		switch msg.Type {
-		case tea.MouseWheelUp:
-			m.scrollTree(-3)
-		case tea.MouseWheelDown:
-			m.scrollTree(3)
-		}
-		return m, nil
-	}
-	if target == focusEditor && m.view == viewEdit {
-		var cmd tea.Cmd
-		m.editor, cmd = m.editor.Update(msg)
-		return m, cmd
-	}
-
-	if target == focusPreview {
-		switch msg.Type {
-		case tea.MouseWheelUp:
-			m.preview.ScrollUp(3)
-		case tea.MouseWheelDown:
-			m.preview.ScrollDown(3)
-		default:
-			var cmd tea.Cmd
-			m.preview, cmd = m.preview.Update(msg)
-			return m, cmd
-		}
-	}
-	return m, nil
-}
-
 func (m *model) cycleFocus() {
 	if !m.treeVisible {
 		m.setMainFocus()
@@ -226,25 +182,24 @@ func (m model) toggleMouseCapture() (tea.Model, tea.Cmd) {
 	if m.eyesOnly {
 		m.selectionMode = false
 		m.selecting = false
+		m.editorDrag = false
 		m.mouseCapture = true
 		m.err = "eyes only notes keep copy protection on"
 		m.resize()
 		return m, tea.Batch(tea.EnableMouseCellMotion, tea.ClearScreen)
 	}
-	m.selectionMode = !m.selectionMode
+	m.selectionMode = false
 	m.selecting = false
-	m.mouseCapture = true
-	if !m.selectionMode {
-		m.status = "selection mode off"
-		m.err = ""
-		m.resize()
-		return m, tea.Batch(tea.EnableMouseCellMotion, tea.ClearScreen)
-	}
-	m.initSelectionOffset()
-	m.status = "selection mode: drag in the writing pane; release copies"
+	m.editorDrag = false
+	m.mouseCapture = !m.mouseCapture
 	m.err = ""
 	m.resize()
-	return m, tea.Batch(tea.EnableMouseCellMotion, tea.ClearScreen)
+	if m.mouseCapture {
+		m.status = "app mouse on"
+		return m, tea.Batch(tea.EnableMouseCellMotion, tea.ClearScreen)
+	}
+	m.status = "terminal mouse selection on; ctrl+y restores app mouse"
+	return m, tea.Batch(tea.DisableMouse, tea.ClearScreen)
 }
 
 func (m model) focusAtX(x int) focus {
