@@ -39,7 +39,7 @@ func (m *model) openDiskPath(path string) error {
 	m.eyesOnly = false
 	m.vaultID = ""
 	m.expandTreeTo("file:" + abs)
-	m.editor.SetValue(string(b))
+	m.setEditorText(string(b))
 	m.dirty = false
 	m.status = "editing " + abs
 	m.err = ""
@@ -84,7 +84,7 @@ func (m *model) openVaultPath(path string) error {
 		m.mouseCapture = true
 	}
 	m.expandTreeTo("vault:" + note.Path)
-	m.editor.SetValue(content)
+	m.setEditorText(content)
 	m.dirty = false
 	m.status = "editing vault:" + note.Path
 	if m.eyesOnly {
@@ -114,7 +114,7 @@ func (m *model) save() {
 func (m *model) saveToVault() {
 	path := m.vaultPath
 	if path == "" {
-		path = defaultVaultPath(m.diskPath, m.cwd, m.editor.Value())
+		path = defaultVaultPath(m.diskPath, m.cwd, m.editorText())
 	}
 	if err := m.saveToVaultPath(path); err != nil {
 		m.err = err.Error()
@@ -122,7 +122,7 @@ func (m *model) saveToVault() {
 }
 
 func (m *model) saveToVaultPath(path string) error {
-	content := m.editor.Value()
+	content := m.editorText()
 	if m.vaultID == "" {
 		m.vaultID = uuid.NewString()
 	}
@@ -152,7 +152,7 @@ func (m *model) saveToDiskPath(path string) error {
 	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
 		return err
 	}
-	if err := os.WriteFile(abs, []byte(m.editor.Value()), 0o644); err != nil {
+	if err := os.WriteFile(abs, []byte(m.editorText()), 0o644); err != nil {
 		return err
 	}
 	m.filePath = abs

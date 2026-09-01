@@ -16,7 +16,7 @@ func (m model) startSaveFile() (tea.Model, tea.Cmd) {
 			name = m.filePath
 		}
 		if name == "" {
-			name = strings.ToLower(strings.ReplaceAll(titleFor("", m.editor.Value()), " ", "-")) + ".md"
+			name = strings.ToLower(strings.ReplaceAll(titleFor("", m.editorText()), " ", "-")) + ".md"
 		}
 		path = filepath.Join(m.cwd, filepath.Base(name))
 	}
@@ -31,7 +31,7 @@ func (m model) startSaveFile() (tea.Model, tea.Cmd) {
 func (m model) startSaveVault() (tea.Model, tea.Cmd) {
 	path := m.vaultPath
 	if path == "" {
-		path = defaultVaultPath(m.diskPath, m.cwd, m.editor.Value())
+		path = defaultVaultPath(m.diskPath, m.cwd, m.editorText())
 	}
 	m.mode = modeSaveVault
 	m.vaultPrompt.SetValue(path)

@@ -1,7 +1,7 @@
 package tui
 
 func (m *model) renderPreview() {
-	content := m.editor.Value()
+	content := m.editorText()
 	width := max(10, m.preview.Width)
 	m.preview.SetContent(m.markdown.Render(content, width))
 }
@@ -9,7 +9,7 @@ func (m *model) renderPreview() {
 func (m *model) resize() {
 	innerH := m.bodyHeight()
 	_, mainW := m.layoutWidths()
-	m.editor.ShowLineNumbers = !m.selectionMode
+	m.configureEditor()
 	m.editor.SetWidth(contentWidth(m.styles.panel, mainW))
 	m.editor.SetHeight(contentHeight(m.styles.panel, innerH))
 	m.preview.Width = contentWidth(m.styles.panel, mainW)

@@ -19,7 +19,7 @@ func (m *model) newVaultNote() {
 	m.isVault = true
 	m.eyesOnly = false
 	m.expandTreeTo("vault:" + path)
-	m.editor.SetValue("# Untitled\n\n")
+	m.setEditorText("# Untitled\n\n")
 	m.dirty = true
 	m.status = "new vault note " + path
 	m.setView(viewEdit)
@@ -66,7 +66,7 @@ func (m *model) createVaultDocumentAtPath(path string) error {
 	m.diskPath = ""
 	m.isVault = true
 	m.eyesOnly = false
-	m.editor.SetValue(content)
+	m.setEditorText(content)
 	m.dirty = false
 	m.err = ""
 	m.status = "created vault note " + path
@@ -106,7 +106,7 @@ func (m *model) createFilesystemDocumentAtPath(path string) error {
 	m.cwd = filepath.Dir(path)
 	m.isVault = false
 	m.eyesOnly = false
-	m.editor.SetValue(content)
+	m.setEditorText(content)
 	m.dirty = false
 	m.err = ""
 	m.status = "created " + path

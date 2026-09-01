@@ -98,6 +98,7 @@ func (m model) writeView() string {
 		treeStyle = m.styles.sidebar.BorderForeground(neonCyan)
 	}
 
+	m.prepareEditorView()
 	mainContent := m.editor.View()
 	if m.view == viewRender {
 		mainContent = m.preview.View()

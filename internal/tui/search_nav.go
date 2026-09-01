@@ -85,7 +85,7 @@ func (m *model) findNext(query string) {
 }
 
 func (m *model) findInPreview(query string) {
-	rendered := m.markdown.Render(m.editor.Value(), max(10, m.preview.Width))
+	rendered := m.markdown.Render(m.editorText(), max(10, m.preview.Width))
 	lines := strings.Split(rendered, "\n")
 	q := strings.ToLower(query)
 	start := min(len(lines), m.preview.YOffset+1)
@@ -107,7 +107,7 @@ func (m *model) findInPreview(query string) {
 }
 
 func (m *model) findInEditor(query string) {
-	lines := strings.Split(m.editor.Value(), "\n")
+	lines := strings.Split(m.editorText(), "\n")
 	q := strings.ToLower(query)
 	start := min(len(lines), m.editor.Line()+1)
 	for pass := 0; pass < 2; pass++ {

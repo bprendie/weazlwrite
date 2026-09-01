@@ -33,7 +33,7 @@ func (m model) updateAI(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.generatingAt = time.Now()
 		m.err = ""
 		m.status = "ai generating block"
-		return m, tea.Batch(m.generateAIBlock(instruction, m.editor.Value()), m.working.Tick)
+		return m, tea.Batch(m.generateAIBlock(instruction, m.editorText()), m.working.Tick)
 	case "esc":
 		m.mode = modeWrite
 		m.setMainFocus()

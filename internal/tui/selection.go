@@ -125,11 +125,11 @@ func (m model) selectionSourceLines() []string {
 	if m.view == viewRender {
 		return m.renderedPlainLines()
 	}
-	return strings.Split(m.editor.Value(), "\n")
+	return strings.Split(m.editorText(), "\n")
 }
 
 func (m model) renderedPlainLines() []string {
-	rendered := m.markdown.Render(m.editor.Value(), m.preview.Width)
+	rendered := m.markdown.Render(m.editorText(), m.preview.Width)
 	lines := strings.Split(rendered, "\n")
 	out := make([]string, 0, len(lines))
 	for _, line := range lines {

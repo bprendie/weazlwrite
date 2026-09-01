@@ -88,6 +88,7 @@ type model struct {
 	llmPrompt     textinput.Model
 	working       spinner.Model
 	editor        textarea.Model
+	editorChrome  *editorChrome
 	preview       viewport.Model
 	helpView      viewport.Model
 	markdown      markdownRenderer
@@ -217,11 +218,9 @@ func New(cfg config.Config, cfgPath string, openPath string) tea.Model {
 		spinner.WithStyle(s.status),
 	)
 
-	ta := textarea.New()
-	ta.Placeholder = "# Untitled\n\nStart writing..."
-	ta.ShowLineNumbers = true
-	ta.CharLimit = 0
-	ta.KeyMap = newEditorKeyMap()
+	chrome := &editorChrome{gutter: editorGutterWidth}
+	ta := newDocumentEditor()
+	ta.SetPromptFunc(editorGutterWidth, chrome.prompt)
 	ta.Focus()
 
 	cwd, _ := os.Getwd()
@@ -247,6 +246,7 @@ func New(cfg config.Config, cfgPath string, openPath string) tea.Model {
 		llmPrompt:    llmPrompt,
 		working:      working,
 		editor:       ta,
+		editorChrome: chrome,
 		preview:      viewport.New(0, 0),
 		helpView:     viewport.New(0, 0),
 		markdown:     markdownRenderer{enabled: cfg.UI.MarkdownEnabled(), style: cfg.UI.MarkdownStyle},
@@ -442,7 +442,7 @@ func (m *model) applyAutoLock() {
 	m.password.Focus()
 	m.pendingPass = ""
 	m.confirmPass.SetValue("")
-	m.editor.SetValue("")
+	m.setEditorText("")
 	m.preview.SetContent("")
 	m.tree = nil
 	m.treeIdx = 0
