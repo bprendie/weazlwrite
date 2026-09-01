@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Find from the caret, including later matches on the same line, and wrap around with a status note. Selection overlay wraps long lines and still copies whole logical lines.
 - Page the editor by wrapped on-screen rows (pgup/pgdown, status page count, ctrl+g). Home/End stay start/end of the Markdown paragraph.
 - Uncap the editor so Enter works past 99 lines, wrap follows the pane, the extra prompt gutter is gone, line numbers stay a stable width, and tabs in a file are not rewritten on open+save.
 - Remap writing keys so the editor owns motion while focused: `alt+v` saves to the vault, `alt+d` saves to disk, `alt+i` inserts AI, `alt+n` creates a vault note, `f1`/`?` open help. `ctrl+v` pastes, `ctrl+e` is end of line in the editor, and tree `ctrl+n` still creates a folder.

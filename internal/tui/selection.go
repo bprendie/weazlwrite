@@ -24,22 +24,23 @@ func (m model) updateSelectionMouse(mouse tea.MouseEvent) (tea.Model, tea.Cmd) {
 	if !ok && m.selecting {
 		row = m.scrollSelectionForMouse(mouse.Y)
 	}
-	absoluteRow := m.selectOffset + row
+	_, _, width, _ := m.mainContentBounds()
+	logical := m.selectionLogicalAt(m.selectOffset+row, width)
 	switch mouse.Action {
 	case tea.MouseActionPress:
 		m.selecting = true
-		m.selectStart = selectPoint{row: absoluteRow}
+		m.selectStart = selectPoint{row: logical}
 		m.selectEnd = m.selectStart
 		m.status = "selecting"
 	case tea.MouseActionMotion:
 		if m.selecting {
-			m.selectEnd = selectPoint{row: absoluteRow}
+			m.selectEnd = selectPoint{row: logical}
 		}
 	case tea.MouseActionRelease:
 		if !m.selecting {
 			return m, nil
 		}
-		m.selectEnd = selectPoint{row: absoluteRow}
+		m.selectEnd = selectPoint{row: logical}
 		m.selecting = false
 		text := m.selectedText()
 		if strings.TrimSpace(text) == "" {
@@ -53,18 +54,21 @@ func (m model) updateSelectionMouse(mouse tea.MouseEvent) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) initSelectionOffset() {
-	_, _, _, height := m.mainContentBounds()
+	_, _, width, height := m.mainContentBounds()
+	vis := m.selectionVisualRows(width)
+	cur := 0
 	if m.view == viewRender {
-		m.selectOffset = min(max(0, m.preview.YOffset), max(0, len(m.selectionSourceLines())-height))
-		return
+		cur = m.preview.YOffset
+	} else {
+		cur = m.selectionCursorVisualRow(width)
 	}
-	m.selectOffset = min(max(0, m.editor.Line()-height/2), max(0, len(m.selectionSourceLines())-height))
+	m.selectOffset = min(max(0, cur-height/2), max(0, len(vis)-height))
 }
 
 func (m *model) scrollSelectionForMouse(y int) int {
-	_, contentY, _, contentH := m.mainContentBounds()
-	lines := m.selectionSourceLines()
-	maxOffset := max(0, len(lines)-contentH)
+	_, contentY, width, contentH := m.mainContentBounds()
+	vis := m.selectionVisualRows(width)
+	maxOffset := max(0, len(vis)-contentH)
 	switch {
 	case y < contentY:
 		m.selectOffset = max(0, m.selectOffset-1)
@@ -138,23 +142,72 @@ func (m model) renderedPlainLines() []string {
 	return out
 }
 
+type selectionVisRow struct {
+	logical int
+	text    string
+}
+
 func (m model) selectionView(width, height int) string {
-	lines := m.selectionSourceLines()
-	if len(lines) == 0 {
+	vis := m.selectionVisualRows(width)
+	if len(vis) == 0 {
 		return ""
 	}
 	start, end := m.selectionRows()
 	visible := make([]string, 0, height)
-	for absolute := m.selectOffset; absolute < len(lines) && len(visible) < height; absolute++ {
-		line := strings.ReplaceAll(lines[absolute], "\t", "    ")
-		line = ansi.Truncate(line, max(1, width), "")
-		line = strings.TrimRight(line, " ")
-		if absolute >= start && absolute <= end {
+	for absolute := m.selectOffset; absolute < len(vis) && len(visible) < height; absolute++ {
+		line := vis[absolute].text
+		if vis[absolute].logical >= start && vis[absolute].logical <= end {
 			line = lipgloss.NewStyle().Reverse(true).Render(line)
 		}
 		visible = append(visible, line)
 	}
 	return strings.Join(visible, "\n")
+}
+
+func (m model) selectionVisualRows(width int) []selectionVisRow {
+	lines := m.selectionSourceLines()
+	out := make([]selectionVisRow, 0, len(lines))
+	for i, line := range lines {
+		for _, row := range wrapDisplayLine(line, width) {
+			out = append(out, selectionVisRow{logical: i, text: row})
+		}
+	}
+	return out
+}
+
+func (m model) selectionLogicalAt(visualRow, width int) int {
+	vis := m.selectionVisualRows(width)
+	if len(vis) == 0 {
+		return 0
+	}
+	visualRow = min(max(0, visualRow), len(vis)-1)
+	return vis[visualRow].logical
+}
+
+func (m model) selectionCursorVisualRow(width int) int {
+	lines := m.selectionSourceLines()
+	line := min(max(0, m.editor.Line()), max(0, len(lines)-1))
+	row := 0
+	for i := 0; i < line; i++ {
+		row += len(wrapDisplayLine(lines[i], width))
+	}
+	return row
+}
+
+func wrapDisplayLine(line string, width int) []string {
+	line = strings.ReplaceAll(line, "\t", "    ")
+	if width < 1 {
+		width = 1
+	}
+	rows := wrapRunes([]rune(line), width)
+	out := make([]string, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, strings.TrimRight(string(row), " "))
+	}
+	if len(out) == 0 {
+		return []string{""}
+	}
+	return out
 }
 
 func copyOSC52(text string) tea.Cmd {

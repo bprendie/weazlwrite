@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -87,46 +88,82 @@ func (m *model) findNext(query string) {
 func (m *model) findInPreview(query string) {
 	rendered := m.markdown.Render(m.editorText(), max(10, m.preview.Width))
 	lines := strings.Split(rendered, "\n")
-	q := strings.ToLower(query)
-	start := min(len(lines), m.preview.YOffset+1)
-	for pass := 0; pass < 2; pass++ {
-		from := 0
-		if pass == 0 {
-			from = start
-		}
-		for i := from; i < len(lines); i++ {
-			if strings.Contains(strings.ToLower(lines[i]), q) {
-				m.preview.SetYOffset(max(0, i-1))
-				m.err = ""
-				m.status = fmt.Sprintf("found %q on page %d", query, m.currentPage())
-				return
-			}
-		}
+	line, _, wrapped, ok := findNextInLines(lines, query, m.preview.YOffset, 0)
+	if !ok {
+		m.err = "not found: " + query
+		return
 	}
-	m.err = "not found: " + query
+	m.preview.SetYOffset(max(0, line))
+	m.err = ""
+	m.status = findStatus(query, m.currentPage(), wrapped)
 }
 
 func (m *model) findInEditor(query string) {
 	lines := strings.Split(m.editorText(), "\n")
-	q := strings.ToLower(query)
-	start := min(len(lines), m.editor.Line()+1)
-	for pass := 0; pass < 2; pass++ {
-		from := 0
-		if pass == 0 {
-			from = start
-		}
-		for i := from; i < len(lines); i++ {
-			col := strings.Index(strings.ToLower(lines[i]), q)
-			if col >= 0 {
-				m.moveEditorToLine(i)
-				m.editor.SetCursor(col)
-				m.err = ""
-				m.status = fmt.Sprintf("found %q on page %d", query, m.currentPage())
-				return
-			}
+	line, col, wrapped, ok := findNextInLines(lines, query, m.editor.Line(), m.editorCursorCol()+1)
+	if !ok {
+		m.err = "not found: " + query
+		return
+	}
+	m.moveEditorToLine(line)
+	m.editor.SetCursor(col)
+	m.err = ""
+	m.status = findStatus(query, m.currentPage(), wrapped)
+}
+
+func (m model) editorCursorCol() int {
+	info := m.editor.LineInfo()
+	return max(0, info.StartColumn+info.ColumnOffset)
+}
+
+func findStatus(query string, page int, wrapped bool) string {
+	msg := fmt.Sprintf("found %q on page %d", query, page)
+	if wrapped {
+		msg += " (wrapped)"
+	}
+	return msg
+}
+
+func findNextInLines(lines []string, query string, startLine, startCol int) (line, col int, wrapped, ok bool) {
+	q := strings.ToLower(strings.TrimSpace(query))
+	if q == "" || len(lines) == 0 {
+		return 0, 0, false, false
+	}
+	startLine = min(max(0, startLine), len(lines)-1)
+	startCol = max(0, startCol)
+	if c, found := indexFrom(lines[startLine], q, startCol); found {
+		return startLine, c, false, true
+	}
+	for i := startLine + 1; i < len(lines); i++ {
+		if c, found := indexFrom(lines[i], q, 0); found {
+			return i, c, false, true
 		}
 	}
-	m.err = "not found: " + query
+	for i := 0; i < startLine; i++ {
+		if c, found := indexFrom(lines[i], q, 0); found {
+			return i, c, true, true
+		}
+	}
+	if c, found := indexFrom(lines[startLine], q, 0); found && c < startCol {
+		return startLine, c, true, true
+	}
+	return 0, 0, false, false
+}
+
+func indexFrom(line, query string, fromRune int) (int, bool) {
+	rs := []rune(strings.ToLower(line))
+	if fromRune < 0 {
+		fromRune = 0
+	}
+	if fromRune > len(rs) || query == "" {
+		return 0, false
+	}
+	hay := string(rs[fromRune:])
+	at := strings.Index(hay, query)
+	if at < 0 {
+		return 0, false
+	}
+	return fromRune + utf8.RuneCountInString(hay[:at]), true
 }
 
 func (m *model) jumpToPage(page int) {

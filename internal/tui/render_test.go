@@ -258,6 +258,31 @@ func TestSelectionBoundsExcludeTreeAndSelectedTextExcludesLineNumbers(t *testing
 	}
 }
 
+func TestSelectionViewWrapsLongLine(t *testing.T) {
+	editor := textarea.New()
+	long := strings.Repeat("word ", 30)
+	editor.SetValue(long)
+	m := model{
+		styles: newStyles(),
+		mode:   modeWrite,
+		focus:  focusEditor,
+		view:   viewEdit,
+		editor: editor,
+	}
+	m.selectStart = selectPoint{row: 0}
+	m.selectEnd = selectPoint{row: 0}
+	got := m.selectionView(20, 12)
+	if strings.Count(got, "\n") < 1 {
+		t.Fatalf("selection view did not wrap, got %q", got)
+	}
+	if !strings.Contains(got, "word") {
+		t.Fatalf("selection view missing content: %q", got)
+	}
+	if got := m.selectedText(); got != long {
+		t.Fatalf("selectedText copied wrapped visual rows")
+	}
+}
+
 func TestLayoutWidthsForTreeStates(t *testing.T) {
 	m := model{width: 100, height: 24, styles: newStyles(), treeVisible: true, focus: focusEditor}
 	treeW, mainW := m.layoutWidths()
