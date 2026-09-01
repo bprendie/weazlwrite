@@ -27,7 +27,7 @@ func (m *model) openDiskPath(path string) error {
 	}
 	b, err := os.ReadFile(abs)
 	if os.IsNotExist(err) {
-		b = []byte("# " + strings.TrimSuffix(filepath.Base(abs), filepath.Ext(abs)) + "\n\n")
+		b = []byte("# " + strings.TrimSuffix(filepath.Base(abs), filepath.Ext(abs)) + "\n")
 	} else if err != nil {
 		return err
 	}

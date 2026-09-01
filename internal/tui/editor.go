@@ -70,21 +70,23 @@ func formatGutter(n, width int) string {
 
 func newDocumentEditor() textarea.Model {
 	ta := textarea.New()
-	ta.Placeholder = "# Untitled\n\nStart writing..."
+	ta.Placeholder = "# Untitled\nStart writing..."
 	ta.CharLimit = 0
 	ta.MaxHeight = 0
 	ta.MaxWidth = 0
 	ta.ShowLineNumbers = false
 	ta.Prompt = ""
 	ta.KeyMap = newEditorKeyMap()
-	ta.FocusedStyle.CursorLine = lipgloss.NewStyle().Background(panelAlt)
+	ta.FocusedStyle.Base = lipgloss.NewStyle()
+	ta.FocusedStyle.Text = lipgloss.NewStyle().Foreground(ink)
+	ta.FocusedStyle.CursorLine = lipgloss.NewStyle().Foreground(ink).Background(panelAlt)
 	ta.FocusedStyle.LineNumber = gutterColor()
 	ta.FocusedStyle.Prompt = gutterColor()
+	ta.BlurredStyle.Base = lipgloss.NewStyle()
+	ta.BlurredStyle.Text = lipgloss.NewStyle().Foreground(ink)
 	ta.BlurredStyle.CursorLine = lipgloss.NewStyle().Foreground(muted)
 	ta.BlurredStyle.LineNumber = gutterColor()
 	ta.BlurredStyle.Prompt = gutterColor()
-	ta.FocusedStyle.Base = lipgloss.NewStyle().Foreground(ink).Background(panel)
-	ta.BlurredStyle.Base = lipgloss.NewStyle().Foreground(ink).Background(panel)
 	return ta
 }
 

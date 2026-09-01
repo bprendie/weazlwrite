@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Stop extra blank rows in the editor and wrapping in the tree: size the editor to the focused panel, keep textarea styles inline, truncate tree labels to the pane, and start new notes with a single heading line.
 - Color editor line numbers with the same violet as tree folders.
 - Undo/redo with `ctrl+z` / `ctrl+shift+z`. Wrap stays soft and follows the pane; Markdown is not hard-wrapped on save.
 - Click in the editor places the cursor; drag copies a character range. Click the tree to select a row. `ctrl+y` turns app mouse capture off so the terminal can select text. Eyes Only still blocks copy.

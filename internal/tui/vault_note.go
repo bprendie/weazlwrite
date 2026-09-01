@@ -19,7 +19,7 @@ func (m *model) newVaultNote() {
 	m.isVault = true
 	m.eyesOnly = false
 	m.expandTreeTo("vault:" + path)
-	m.loadEditorText("# Untitled\n\n")
+	m.loadEditorText("# Untitled\n")
 	m.dirty = true
 	m.status = "new vault note " + path
 	m.setView(viewEdit)
@@ -55,7 +55,7 @@ func (m *model) createVaultDocumentAtPath(path string) error {
 	if path == "" {
 		return fmt.Errorf("invalid vault path")
 	}
-	content := "# Untitled\n\n"
+	content := "# Untitled\n"
 	id := uuid.NewString()
 	if err := m.store.SaveNote(id, path, titleFor(path, content), content); err != nil {
 		return err
@@ -92,7 +92,7 @@ func (m *model) createFilesystemDocumentAtPath(path string) error {
 	if path == "" {
 		return fmt.Errorf("invalid filesystem path")
 	}
-	content := "# Untitled\n\n"
+	content := "# Untitled\n"
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}

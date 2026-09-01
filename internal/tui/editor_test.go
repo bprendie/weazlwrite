@@ -6,6 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 )
 
 func TestEnterWorksPastNinetyNineLines(t *testing.T) {
@@ -79,6 +80,32 @@ func TestGutterHasStableWidth(t *testing.T) {
 	}
 	if w := lipgloss.Width(styleGutter(got)); w != editorGutterWidth {
 		t.Fatalf("styled gutter width = %d, want %d", w, editorGutterWidth)
+	}
+}
+
+func TestEditorViewDoesNotBlankBetweenLines(t *testing.T) {
+	ed := newDocumentEditor()
+	ed.Focus()
+	ed.SetPromptFunc(editorGutterWidth, func(i int) string {
+		return formatGutter(i+1, editorGutterWidth)
+	})
+	ed.SetWidth(40)
+	ed.SetHeight(6)
+	ed.SetValue("alpha\nbeta\ngamma")
+	lines := strings.Split(ed.View(), "\n")
+	if len(lines) < 3 {
+		t.Fatalf("view lines = %d", len(lines))
+	}
+	got := []string{
+		strings.TrimSpace(ansi.Strip(lines[0])),
+		strings.TrimSpace(ansi.Strip(lines[1])),
+		strings.TrimSpace(ansi.Strip(lines[2])),
+	}
+	want := []string{"1alpha", "2beta", "3gamma"}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("line %d = %q, want %q", i, got[i], want[i])
+		}
 	}
 }
 

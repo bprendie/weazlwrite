@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 )
 
 func (m model) treeView(width, height int) string {
@@ -18,19 +19,21 @@ func (m model) treeView(width, height int) string {
 		}
 		entry := m.tree[i]
 		name := m.treeEntryLabel(entry)
-		name = minString(name, max(1, width-2))
-		line := m.treeEntryStyle(entry, false).Render("  " + name)
+		prefix := "  "
 		if i == m.treeIdx {
-			if m.treeEntryEyesOnly(entry) {
-				line = m.styles.sidebarEyes.Render("> " + name)
-			} else {
-				line = m.styles.sidebarSel.Render("> " + name)
-			}
-		} else if m.treeEntryEyesOnly(entry) {
-			line = m.styles.sidebarEyes.Render("  " + name)
-		} else if entry.isDir {
-			line = m.treeEntryStyle(entry, false).Render("  " + name)
+			prefix = "> "
 		}
+		var line string
+		if i == m.treeIdx && m.treeEntryEyesOnly(entry) {
+			line = m.styles.sidebarEyes.Render(prefix + name)
+		} else if i == m.treeIdx {
+			line = m.styles.sidebarSel.Render(prefix + name)
+		} else if m.treeEntryEyesOnly(entry) {
+			line = m.styles.sidebarEyes.Render(prefix + name)
+		} else {
+			line = m.treeEntryStyle(entry, false).Render(prefix + name)
+		}
+		line = ansi.Truncate(line, max(1, width), "")
 		b.WriteString(line)
 		if i != len(m.tree)-1 && row != height-1 {
 			b.WriteByte('\n')
