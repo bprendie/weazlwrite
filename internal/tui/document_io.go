@@ -102,7 +102,7 @@ func (m *model) save() {
 		return
 	}
 	if m.diskPath == "" {
-		m.err = "no filesystem path; use ctrl+f"
+		m.err = "no filesystem path; use " + keySaveDisk
 		return
 	}
 	if err := m.saveToDiskPath(m.diskPath); err != nil {

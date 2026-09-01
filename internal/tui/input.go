@@ -4,47 +4,50 @@ import tea "github.com/charmbracelet/bubbletea"
 
 func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "tab":
+	case keyCycleFocus:
 		m.cycleFocus()
 		return m, nil
-	case "ctrl+s":
+	case keySave:
 		m.save()
 		m.renderTree()
 		return m, nil
-	case "ctrl+v":
+	case keySaveVault:
 		return m.startSaveVault()
-	case "alt+f":
+	case keySaveDisk:
 		return m.startSaveFile()
-	case "ctrl+f":
+	case keyFind:
 		return m.startFind()
-	case "ctrl+g":
+	case keyJumpPage:
 		return m.startJumpPage()
-	case "alt+o":
+	case keyEyes:
 		return m.toggleCurrentEyesOnly()
-	case "ctrl+n":
+	case keyNewNote:
+		m.newVaultNote()
+		return m, nil
+	case keyNewFolder:
 		if m.focus == focusTree {
 			return m.startNewFolder()
 		}
-		m.newVaultNote()
-		return m, nil
-	case "ctrl+p", "alt+i":
+	case keyAI:
 		return m.startAIInsert()
-	case "ctrl+o":
+	case keyToggleTree:
 		m.toggleTree()
 		return m, nil
-	case "ctrl+y":
+	case keySelection:
 		return m.toggleMouseCapture()
-	case "ctrl+k", "f1":
+	case keyHelp:
 		return m.startHelp()
-	case "ctrl+l":
+	case keyLLM:
 		return m.startLLMConfig()
-	case "ctrl+e":
-		m.setView(viewEdit)
-		return m, nil
-	case "ctrl+r":
+	case keyEdit:
+		if !m.editorTyping() {
+			m.setView(viewEdit)
+			return m, nil
+		}
+	case keyRender:
 		m.setView(viewRender)
 		return m, nil
-	case "pgup":
+	case keyPgUp:
 		if m.focus == focusTree {
 			m.pageTree(-1)
 			return m, nil
@@ -57,7 +60,7 @@ func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.editorPageUp()
 			return m, nil
 		}
-	case "pgdown":
+	case keyPgDown:
 		if m.focus == focusTree {
 			m.pageTree(1)
 			return m, nil
@@ -70,17 +73,17 @@ func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.editorPageDown()
 			return m, nil
 		}
-	case "home":
+	case keyHome:
 		if m.focus == focusPreview {
 			m.preview.GotoTop()
 			return m, nil
 		}
-	case "end":
+	case keyEnd:
 		if m.focus == focusPreview {
 			m.preview.GotoBottom()
 			return m, nil
 		}
-	case "esc":
+	case keyEsc:
 		if m.selectionMode {
 			m.selectionMode = false
 			m.selecting = false
@@ -100,7 +103,7 @@ func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	if (msg.String() == "?" || msg.String() == "h") && (m.focus != focusEditor || m.view != viewEdit) {
+	if (msg.String() == keyHelpQuery || msg.String() == keyHelpH) && !m.editorTyping() {
 		return m.startHelp()
 	}
 

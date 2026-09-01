@@ -87,7 +87,7 @@ $env:WEAZLWRITE_DATA = "C:\path\to\data"
 ## Keys
 
 - startup vault picker: `up` / `down` choose, `enter` opens, `n` creates a new vault
-- `ctrl+e`: edit mode
+- `ctrl+e`: edit mode from the tree or preview; end of line while writing
 - `ctrl+r`: rendered preview mode
 - `esc`: leave render mode for edit mode, or move from the editor back to the tree
 - `ctrl+o`: show or hide the file tree
@@ -95,21 +95,22 @@ $env:WEAZLWRITE_DATA = "C:\path\to\data"
 - `enter`: open a selected file, or fold/unfold a selected folder
 - `space`: pick up a file or note; move to a folder; press `space` again to drop it
 - `n`: create a new document from the tree
-- `ctrl+n`: create a new folder from the tree, or a new vault note when the writer is focused
+- `ctrl+n`: create a new folder from the tree
+- `alt+n`: create a new untitled vault note while writing
 - `d`: delete the selected file, note, or empty folder
 - `r`: rename or move the selected tree item by typing its new path
 - `o`: toggle Eyes Only on a vault note
 - `i`: import the selected filesystem file or folder into the encrypted vault
 - `ctrl+s`: save to the current target
-- `ctrl+v`: save to the encrypted vault
-- `alt+f`: save to a filesystem path
+- `alt+v`: save to the encrypted vault
+- `alt+d`: save to a filesystem path
 - `ctrl+f`: find text in the current pane
 - `ctrl+g`: jump to a page in the current pane
-- `ctrl+p`: ask the local model to insert a Markdown block
-- `ctrl+y`: toggle mouse capture off/on for terminal text selection
+- `alt+i`: ask the local model to insert a Markdown block
+- `ctrl+y`: in-app selection mode; drag in the writing pane to copy
 - `alt+o`: toggle Eyes Only on the current vault note
-- `ctrl+k`: open the full command popup
-- `?` or `h`: open the full help screen
+- `f1`: open the full command popup
+- `?` or `h`: open the full help screen when not typing in the editor
 - `pgup` / `pgdown`: page the focused tree, editor, or render pane
 - mouse wheel: scroll the tree or active writing surface
 - `ctrl+c`: quit
@@ -128,7 +129,7 @@ Big directories are fine. Move with `j` / `k`, the arrow keys, `pgup` / `pgdown`
 
 Tree chores happen right where your cursor is. Press `n` to create a new document in the selected folder, then type the path before it is created. Press `ctrl+n` for a new folder, `d` to delete a selected file or empty folder, and `r` to rename or move. Press `space` to pick up a file, navigate, and press `space` again to drop it. Folders fold and unfold with `enter`.
 
-Press `ctrl+v` to save the current buffer into the encrypted vault. Press `alt+f` to save it out to the regular filesystem. Press `ctrl+s` when you simply want to save back to wherever the current note already lives.
+Press `alt+v` to save the current buffer into the encrypted vault. Press `alt+d` to save it out to the regular filesystem. Press `ctrl+s` when you simply want to save back to wherever the current note already lives.
 
 To pull existing surface files into the encrypted vault, select a `.md`, `.markdown`, `.txt`, `.pdf`, or `.docx` file and press `i`. Select a folder and press `i` to bulk-import it as a vault root, perfect for absorbing Obsidian vaults that already live on disk. Word and PDF files are aggressively stripped down and converted to pure Markdown before encryption. Image-only PDFs and image-only Word files are rejected because there is no text to harvest.
 
@@ -154,7 +155,7 @@ That split rail is the entire point: draft in the open when the code belongs in 
 
 Edit mode is for grinding out text. Render mode is for reading it back without syntax shouting over the prose. WeazlWrite is built on the beautiful Bubble Tea UI framework and uses Glamour so headings, code blocks, and tables keep their terminal-native shape without turning your TUI into a bloated browser.
 
-Need a generated Markdown block? Press `ctrl+p`, describe the spell, and WeazlWrite hits your configured local model for the exact insertable text. While the model grinds, terminal spinners and rotating Weazl-style status phrases keep the screen alive so you know the hardware is working.
+Need a generated Markdown block? Press `alt+i`, describe the spell, and WeazlWrite hits your configured local model for the exact insertable text. While the model grinds, terminal spinners and rotating Weazl-style status phrases keep the screen alive so you know the hardware is working.
 
 ## Security
 

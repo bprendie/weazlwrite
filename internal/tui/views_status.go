@@ -210,5 +210,5 @@ func (m model) helpText() string {
 	if m.eyesOnly {
 		eyes = " eyes-only"
 	}
-	return mode + eyes + " " + tree + " " + mouse + " | tab focus | enter open | ^S " + target + " | ^P AI | ^L llm | alt+O eyes | ^K commands | ^C"
+	return mode + eyes + " " + tree + " " + mouse + " | " + keyCycleFocus + " focus | enter open | ^S " + target + " | " + keyAI + " AI | " + keyLLM + " llm | " + keyEyes + " eyes | " + keyHelp + " commands | ctrl+c"
 }

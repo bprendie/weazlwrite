@@ -1,6 +1,9 @@
 package tui
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 func (m model) helpScreenView() string {
 	innerH := m.bodyHeight()
@@ -13,66 +16,72 @@ func (m *model) renderHelp() {
 	if m.helpView.Width <= 0 {
 		m.helpView.Width = max(20, contentWidth(m.styles.panel, m.width))
 	}
-	m.helpView.SetContent(strings.TrimSpace(`
-WeazlWrite help
+	m.helpView.SetContent(helpContent())
+}
 
-Main writing
-  tab                 Move between the editor/render pane and the tree.
-  ctrl+e              Edit mode.
-  ctrl+r              Render mode.
-  ctrl+s              Save to the current target.
-  ctrl+v              Save to: encrypted vault.
-  alt+f               Save to: filesystem.
-  ctrl+f              Find text in the current edit/render pane.
-  ctrl+g              Jump to a page in the current edit/render pane.
-  ctrl+n              New untitled vault note. When the tree is focused, create a folder.
-  ctrl+p              AI insert prompt. The generated Markdown block is inserted at the cursor.
-  ctrl+o              Show or hide the tree.
-  ctrl+y              Toggle mouse capture. Off means terminal drag-selection works for copying text.
-  alt+o               Toggle eyes-only for the current vault note. Disabling asks for confirmation.
-  ctrl+k              Open this command screen.
-  ? or h              Open this command screen.
-  ctrl+c              Quit.
-
-Tree
-  up/down or k/j      Move selection.
-  enter               Open a file/note, or fold/unfold a folder.
-  n                   New document at the selected folder or file's parent; enter the path before creation.
-  ctrl+n              New folder at the selected location.
-  d                   Delete the selected file, note, or empty folder.
-  r                   Rename or move the selected entry by typing its new path.
-  o                   Toggle eyes-only on a vault note. Disabling asks for confirmation.
-  space               Pick up the selected file/note; move to a destination folder; space again to drop.
-  i                   Import the selected filesystem file/folder into the vault.
-  pgup/pgdown         Page through the tree.
-  esc                 Put down a picked-up entry and return focus to the writer.
-
-Escape
-  render mode         Return to edit mode.
-  edit mode           Move focus back to the tree when it is visible.
-
-Vault and filesystem
-  Vault entries live inside the encrypted SQLite vault at ~/.weazlwrite/vault.
-  Files entries are regular files from the current filesystem folder.
-  Moving with space/drop stays inside the same side: vault-to-vault or filesystem-to-filesystem.
-  To copy content between sides, use Save to: vault/filesystem or import.
-
-Copying text
-  Terminal mouse selection and app mouse scrolling compete for the same events.
-  Press ctrl+y to turn mouse capture off, then select/copy text from edit or render with your terminal.
-  Press ctrl+y again to restore mouse scrolling in the tree and panes.
-  Eyes-only vault notes keep mouse capture on so blocks cannot be copied out with terminal selection.
-
-Import
-  Select a filesystem .md, .markdown, .txt, .pdf, or .docx file and press i to import it to the vault.
-  Select a filesystem folder and press i to bulk-import it as a vault root.
-  Folder imports preserve relative paths, skip hidden folders/files, and are meant for Obsidian-style vaults.
-  PDF and DOCX imports are converted to pure Markdown before they are encrypted and saved.
-  Image-only PDFs or image-only Word docs cannot be imported because there is no selectable text to convert.
-  Existing vault paths are updated in place.
-
-Prompts
-  enter confirms.
-  esc cancels.
-`))
+func helpContent() string {
+	line := func(chord, text string) string {
+		return fmt.Sprintf("  %-20s%s", chord, text)
+	}
+	return strings.TrimSpace(strings.Join([]string{
+		"WeazlWrite help",
+		"",
+		"Main writing",
+		line(keyCycleFocus, "Move between the editor/render pane and the tree."),
+		line(keyEdit, "Edit mode from the tree or preview. In the editor, end of line."),
+		line(keyRender, "Render mode."),
+		line(keySave, "Save to the current target."),
+		line(keySaveVault, "Save to: encrypted vault."),
+		line(keySaveDisk, "Save to: filesystem."),
+		line(keyFind, "Find text in the current edit/render pane."),
+		line(keyJumpPage, "Jump to a page in the current edit/render pane."),
+		line(keyNewNote, "New untitled vault note."),
+		line(keyAI, "AI insert prompt. The generated Markdown block is inserted at the cursor."),
+		line(keyToggleTree, "Show or hide the tree."),
+		line(keySelection, "Selection mode: drag in the writing pane; release copies."),
+		line(keyEyes, "Toggle eyes-only for the current vault note. Disabling asks for confirmation."),
+		line(keyHelp, "Open this command screen."),
+		line(keyHelpQuery+" or "+keyHelpH, "Open this command screen when not typing in the editor."),
+		line("ctrl+c", "Quit."),
+		"",
+		"Tree",
+		line("up/down or k/j", "Move selection."),
+		line("enter", "Open a file/note, or fold/unfold a folder."),
+		line("n", "New document at the selected folder or file's parent; enter the path before creation."),
+		line(keyNewFolder, "New folder at the selected location."),
+		line("d", "Delete the selected file, note, or empty folder."),
+		line("r", "Rename or move the selected entry by typing its new path."),
+		line("o", "Toggle eyes-only on a vault note. Disabling asks for confirmation."),
+		line("space", "Pick up the selected file/note; move to a destination folder; space again to drop."),
+		line("i", "Import the selected filesystem file/folder into the vault."),
+		line("pgup/pgdown", "Page through the tree."),
+		line("esc", "Put down a picked-up entry and return focus to the writer."),
+		"",
+		"Escape",
+		line("render mode", "Return to edit mode."),
+		line("edit mode", "Move focus back to the tree when it is visible."),
+		"",
+		"Vault and filesystem",
+		"  Vault entries live inside the encrypted SQLite vault at ~/.weazlwrite/vault.",
+		"  Files entries are regular files from the current filesystem folder.",
+		"  Moving with space/drop stays inside the same side: vault-to-vault or filesystem-to-filesystem.",
+		"  To copy content between sides, use Save to: vault/filesystem or import.",
+		"",
+		"Copying text",
+		"  Terminal mouse selection and app mouse scrolling compete for the same events.",
+		"  Press " + keySelection + " for in-app selection: drag in the writing pane; release copies.",
+		"  Eyes-only vault notes keep mouse capture on so blocks cannot be copied out with terminal selection.",
+		"",
+		"Import",
+		"  Select a filesystem .md, .markdown, .txt, .pdf, or .docx file and press i to import it to the vault.",
+		"  Select a filesystem folder and press i to bulk-import it as a vault root.",
+		"  Folder imports preserve relative paths, skip hidden folders/files, and are meant for Obsidian-style vaults.",
+		"  PDF and DOCX imports are converted to pure Markdown before they are encrypted and saved.",
+		"  Image-only PDFs or image-only Word docs cannot be imported because there is no selectable text to convert.",
+		"  Existing vault paths are updated in place.",
+		"",
+		"Prompts",
+		"  enter confirms.",
+		"  esc cancels.",
+	}, "\n"))
 }

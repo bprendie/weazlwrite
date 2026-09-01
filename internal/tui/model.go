@@ -221,6 +221,7 @@ func New(cfg config.Config, cfgPath string, openPath string) tea.Model {
 	ta.Placeholder = "# Untitled\n\nStart writing..."
 	ta.ShowLineNumbers = true
 	ta.CharLimit = 0
+	ta.KeyMap = newEditorKeyMap()
 	ta.Focus()
 
 	cwd, _ := os.Getwd()

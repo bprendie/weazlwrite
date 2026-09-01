@@ -97,12 +97,12 @@ func TestEscapeMovesFromEditorToTree(t *testing.T) {
 	}
 }
 
-func TestCtrlPOpensAIPrompt(t *testing.T) {
+func TestAltIOpensAIPrompt(t *testing.T) {
 	m := model{styles: newStyles(), mode: modeWrite, focus: focusEditor, aiPrompt: textinput.New(), editor: textarea.New()}
-	updated, _ := m.updateWrite(tea.KeyMsg{Type: tea.KeyCtrlP})
+	updated, _ := m.updateWrite(altKey('i'))
 	got := updated.(model)
 	if got.mode != modeAI {
-		t.Fatalf("ctrl+p mode = %v, want modeAI", got.mode)
+		t.Fatalf("alt+i mode = %v, want modeAI", got.mode)
 	}
 }
 
