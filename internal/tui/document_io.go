@@ -39,7 +39,7 @@ func (m *model) openDiskPath(path string) error {
 	m.eyesOnly = false
 	m.vaultID = ""
 	m.expandTreeTo("file:" + abs)
-	m.setEditorText(string(b))
+	m.loadEditorText(string(b))
 	m.dirty = false
 	m.status = "editing " + abs
 	m.err = ""
@@ -84,7 +84,7 @@ func (m *model) openVaultPath(path string) error {
 		m.mouseCapture = true
 	}
 	m.expandTreeTo("vault:" + note.Path)
-	m.setEditorText(content)
+	m.loadEditorText(content)
 	m.dirty = false
 	m.status = "editing vault:" + note.Path
 	if m.eyesOnly {

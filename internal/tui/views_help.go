@@ -38,6 +38,8 @@ func helpContent() string {
 		line(keyNewNote, "New untitled vault note."),
 		line(keyAI, "AI insert prompt. The generated Markdown block is inserted at the cursor."),
 		line(keyToggleTree, "Show or hide the tree."),
+		line(keyUndo, "Undo the last edit."),
+		line(keyRedo, "Redo the last undone edit."),
 		line(keySelection, "Toggle app mouse capture. Off lets the terminal drag-select text."),
 		line(keyEyes, "Toggle eyes-only for the current vault note. Disabling asks for confirmation."),
 		line(keyHelp, "Open this command screen."),

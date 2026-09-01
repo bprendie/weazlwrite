@@ -35,6 +35,12 @@ func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case keySelection:
 		return m.toggleMouseCapture()
+	case keyUndo:
+		m.undoEdit()
+		return m, nil
+	case keyRedo:
+		m.redoEdit()
+		return m, nil
 	case keyHelp:
 		return m.startHelp()
 	case keyLLM:
@@ -114,10 +120,11 @@ func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.selectionMode {
 			return m, nil
 		}
-		before := m.editor.Value()
+		before := m.editorSnapshot()
 		var cmd tea.Cmd
 		m.editor, cmd = m.editor.Update(msg)
-		if m.editor.Value() != before {
+		if m.editorText() != before.text {
+			m.recordEdit(before)
 			m.dirty = true
 			m.renderPreview()
 		}

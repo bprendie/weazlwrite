@@ -19,6 +19,8 @@ const (
 	keyNewFolder  = "ctrl+n"
 	keyToggleTree = "ctrl+o"
 	keySelection  = "ctrl+y"
+	keyUndo       = "ctrl+z"
+	keyRedo       = "ctrl+shift+z"
 	keyHelp       = "f1"
 	keyHelpQuery  = "?"
 	keyHelpH      = "h"

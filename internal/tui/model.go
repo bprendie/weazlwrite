@@ -133,6 +133,11 @@ type model struct {
 	editorDrag    bool
 	dragStart     textPos
 	dragEnd       textPos
+	undo          []editorSnapshot
+	redo          []editorSnapshot
+	undoOpen      bool
+	lastEdit      time.Time
+	lastEditLine  int
 	dirty         bool
 	aiBusy        bool
 	generatingAt  time.Time
@@ -380,7 +385,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.status = "ai insert failed"
 			return m, nil
 		}
+		m.recordEdit(m.editorSnapshot())
 		m.editor.InsertString("\n\n" + block + "\n\n")
+		m.undoOpen = false
 		m.dirty = true
 		m.err = ""
 		m.status = "inserted ai block"
@@ -458,7 +465,7 @@ func (m *model) applyAutoLock() {
 	m.password.Focus()
 	m.pendingPass = ""
 	m.confirmPass.SetValue("")
-	m.setEditorText("")
+	m.loadEditorText("")
 	m.preview.SetContent("")
 	m.tree = nil
 	m.treeIdx = 0

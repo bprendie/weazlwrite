@@ -107,6 +107,8 @@ $env:WEAZLWRITE_DATA = "C:\path\to\data"
 - `ctrl+f`: find text in the current pane
 - `ctrl+g`: jump to a page in the current pane
 - `alt+i`: ask the local model to insert a Markdown block
+- `ctrl+z`: undo
+- `ctrl+shift+z`: redo
 - `ctrl+y`: toggle app mouse capture; off lets the terminal drag-select text
 - `alt+o`: toggle Eyes Only on the current vault note
 - `f1`: open the full command popup
