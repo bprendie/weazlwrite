@@ -33,10 +33,12 @@ type vaultSnapshot struct {
 	store          *storage.Store
 	epoch, version uint64
 	id, path, text string
+	automatic      bool
 }
 
 type vaultSaveResult struct {
 	snapshot *vaultSnapshot
+	path     string
 	err      error
 }
 type vaultSaveWake struct {
@@ -116,6 +118,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if key.String() == keySave && m.mode == modeWrite && m.isVault {
 			m.undoOpen = false
+			if m.autoNamed {
+				return m.firstVaultSave(key)
+			}
 			m.saves.confirm = true
 			cmd := m.startVaultSave(true)
 			return m, cmd
@@ -195,10 +200,14 @@ func (m *model) startVaultSave(flush bool) tea.Cmd {
 	if m.vaultID == "" {
 		m.vaultID = uuid.NewString()
 	}
-	snapshot := &vaultSnapshot{store: m.store, epoch: m.editorEpoch, version: m.saves.version, id: m.vaultID, path: m.vaultPath, text: m.editorText()}
+	snapshot := &vaultSnapshot{store: m.store, epoch: m.editorEpoch, version: m.saves.version, id: m.vaultID, path: m.vaultPath, text: m.editorText(), automatic: m.autoNamed}
 	m.saves.inFlight = snapshot
 	m.saves.err = ""
 	return func() tea.Msg {
+		if snapshot.automatic {
+			path, err := snapshot.store.SaveDraft(snapshot.id, autoDraftPath(snapshot.path, snapshot.text), titleFor("", snapshot.text), snapshot.text, true)
+			return vaultSaveResult{snapshot: snapshot, path: path, err: err}
+		}
 		err := snapshot.store.SaveNote(snapshot.id, snapshot.path, titleFor(snapshot.path, snapshot.text), snapshot.text)
 		return vaultSaveResult{snapshot: snapshot, err: err}
 	}
@@ -224,12 +233,16 @@ func (m model) finishVaultSave(msg vaultSaveResult) (tea.Model, tea.Cmd) {
 		m.dirty = true
 		return m, nil
 	}
+	if msg.path != "" {
+		m.vaultPath, m.filePath = msg.path, msg.path
+		m.expandTreeTo("vault:" + msg.path)
+	}
 	if snapshot.version == m.saves.version {
 		m.dirty = false
 		m.saves.firstDirty = time.Time{}
 		m.saves.flush = false
 		m.saves.err = ""
-		m.confirmVaultSave(snapshot.path)
+		m.confirmVaultSave(m.vaultPath)
 		if err := m.renderTree(); err != nil {
 			m.err = err.Error()
 		}
@@ -240,7 +253,7 @@ func (m model) finishVaultSave(msg vaultSaveResult) (tea.Model, tea.Cmd) {
 				m.applyAutoLock()
 				return m, nil
 			}
-			return m.updateAndSchedule(pending)
+			return m.Update(pending)
 		}
 		return m, nil
 	}
@@ -251,39 +264,4 @@ func (m model) finishVaultSave(msg vaultSaveResult) (tea.Model, tea.Cmd) {
 	}
 	cmd := m.armVaultSave(time.Now())
 	return m, cmd
-}
-
-// Drain vault writes before actions that can change a note, its path, or session.
-func (m model) vaultTransition(key tea.KeyMsg) bool {
-	if key.Paste {
-		return false
-	}
-	k := key.String()
-	if (k == "ctrl+c" && !m.editorTyping()) || k == "ctrl+q" {
-		return true
-	}
-	if m.mode == modeWrite {
-		switch k {
-		case keyNewNote, keySaveVault, keySaveDisk, keyEyes:
-			return true
-		case keyEsc:
-			return m.editorTyping() && !m.hasTextSelection()
-		case keyToggleTree:
-			return m.editorTyping()
-		}
-		if m.focus == focusTree {
-			switch k {
-			case "enter", "n", "d", "r", "i", "o", " ", keyNewFolder:
-				return true
-			}
-		}
-	}
-	// Saving into a different destination and tree mutations must not race autosave.
-	switch m.mode {
-	case modeSaveFile, modeSaveVault, modeNewDocument, modeRenameTree, modeNewFolder:
-		return k == "enter"
-	case modeConfirmDelete, modeConfirmEyesOff:
-		return k == "enter" || k == "y" || k == "Y"
-	}
-	return false
 }

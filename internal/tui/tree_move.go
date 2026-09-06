@@ -71,6 +71,7 @@ func (m *model) renameVaultTreeEntry(entry treeEntry, newPath string) error {
 	}
 	if m.isVault && cleanVaultPath(m.vaultPath) == old {
 		m.vaultPath = clean
+		m.autoNamed = false
 		m.filePath = clean
 	}
 	m.expandTreeTo("vault:" + clean)

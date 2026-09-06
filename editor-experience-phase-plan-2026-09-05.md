@@ -215,3 +215,15 @@ The original planning request created only this document. The user subsequently 
 - Ctrl+S explicitly requests a completion acknowledgement, including when pressed during an older in-flight write; confirmation waits for the latest version. Save failures, pending-departure help, unsaved disk markers, and detached draft markers remain visible.
 - README updated in its existing voice without phase mentions. Full Go suite, source ceiling check, and whitespace checks passed. Focused tests cover stable status across typing/write/completion, encrypted persistence, manual confirmation after coalesced writes, errors, and unsaved markers.
 - Both binaries rebuilt and installed; byte comparisons and PATH checks passed. Installed tmux smoke confirmed silent autosave, independently decrypted the exact saved draft, verified Ctrl+S acknowledgement and clean quit, and exercised setup using disposable configuration.
+
+### Follow-up — readable draft filenames and first-save naming
+
+- New automatically named vault drafts use up to six opening words, capped at 60 Unicode characters plus `.md`. Markdown labels and visible text supply the words; formatting, link destinations, front matter, code blocks, and the starter Untitled heading do not. Empty/code-only drafts fall back to `untitled.md`.
+- Quiet rolling saves update the same note identity and preserve its folder as the opening words change. Automatic collisions receive numeric suffixes. An additive `auto_named` column remembers that the filename needs confirmation; existing notes migrate as already named.
+- First Ctrl+S drains outstanding writes and offers the latest suggested filename. Enter accepts/edits it, adding `.md` when omitted; Esc retains the autosaved draft and defers confirmation. Confirmed names persist across reopening and subsequent Ctrl+S saves immediately. Explicit collisions show an error without replacing another note. Tree renames count as explicit naming.
+- README updated in the existing voice with no phase references. Full Go suite and TUI/storage race tests passed, including migration, persisted naming state, duplicate protection, identity/Eyes Only preservation, Unicode/Markdown suggestions, cancellation, and old-write/new-edit ordering. Source ceiling and whitespace checks passed.
+- Both binaries rebuilt and installed with byte verification. Installed tmux smoke passed: Markdown-derived filename, independently decrypted autosave, first-save prompt/cancel/reopen, confirmed rename without duplication, subsequent immediate save, automatic suffixes, explicit collision rejection, preview/exit, and setup using disposable configuration. User accepted the naming update and authorized commit, push, and the first versioned release, `v0.1.0`.
+
+### Release — v0.1.0
+
+- First tagged release, dated September 5, 2026. README and changelog describe the delivered behavior; README retains its voice and contains no phase terminology. User authorized commit, push, and publication.

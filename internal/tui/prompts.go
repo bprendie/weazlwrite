@@ -29,6 +29,9 @@ func (m model) startSaveFile() (tea.Model, tea.Cmd) {
 
 func (m model) startSaveVault() (tea.Model, tea.Cmd) {
 	path := m.vaultPath
+	if m.autoNamed {
+		path = m.draftNameSuggestion()
+	}
 	if path == "" {
 		path = defaultVaultPath(m.diskPath, m.cwd, m.editorText())
 	}
@@ -76,7 +79,13 @@ func (m model) updateSaveVault(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.err = "vault path is required"
 			return m, nil
 		}
-		if err := m.saveToVaultPath(path); err != nil {
+		var err error
+		if m.autoNamed {
+			err = m.acceptDraftName(path)
+		} else {
+			err = m.saveToVaultPath(path)
+		}
+		if err != nil {
 			m.err = err.Error()
 			return m, nil
 		}

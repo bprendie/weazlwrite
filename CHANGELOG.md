@@ -1,17 +1,21 @@
 # Changelog
 
-## Unreleased
+## v0.1.0 — 2026-09-05
 
-- Stop extra blank rows in the editor and wrapping in the tree: size the editor to the focused panel, keep textarea styles inline, truncate tree labels to the pane, and start new notes with a single heading line.
-- Color editor line numbers with the same violet as tree folders.
-- Undo/redo with `ctrl+z` / `ctrl+shift+z`. Wrap stays soft and follows the pane; Markdown is not hard-wrapped on save.
-- Click in the editor places the cursor; drag copies a character range. Click the tree to select a row. `ctrl+y` turns app mouse capture off so the terminal can select text. Eyes Only still blocks copy.
-- Find from the caret, including later matches on the same line, and wrap around with a status note. Selection overlay wraps long lines and still copies whole logical lines.
-- Page the editor by wrapped on-screen rows (pgup/pgdown, status page count, ctrl+g). Home/End stay start/end of the Markdown paragraph.
-- Uncap the editor so Enter works past 99 lines, wrap follows the pane, the extra prompt gutter is gone, line numbers stay a stable width, and tabs in a file are not rewritten on open+save.
-- Remap writing keys so the editor owns motion while focused: `alt+v` saves to the vault, `alt+d` saves to disk, `alt+i` inserts AI, `alt+n` creates a vault note, `f1`/`?` open help. `ctrl+v` pastes, `ctrl+e` is end of line in the editor, and tree `ctrl+n` still creates a folder.
-- Upgrade Go runtime target to 1.25.10 or newer for security fixes.
-- Update `golang.org/x/net` to `v0.53.0` and related `golang.org/x/*` modules.
-- Add vault password attempt rate limiting with increasing in-memory backoff delays.
-- Add configurable vault session auto-lock via `vault.auto_lock_minutes`.
-- Save dirty work before auto-lock when possible, then clear visible vault document state.
+First tagged release. A terminal writing desk with an encrypted vault and considerably fewer reasons to swear at the editor.
+
+- Quiet rolling vault saves after 750 ms of quiet or five seconds of continuous typing. Ctrl+S flushes immediately; failures keep the draft and offer retry.
+- New vault drafts get readable filenames from up to six opening words, with Markdown formatting removed. First Ctrl+S suggests a name to accept or edit; confirmation survives reopening. Duplicate suggestions receive numeric suffixes, and explicit naming cannot overwrite another note.
+- Traditional editor controls: Tab/Shift+Tab indentation, Markdown list/number/checkbox continuation, blockquotes, and fenced-code indentation. Paste preserves the supplied text; assisted edits undo together.
+- Persistent keyboard/mouse selection, Ctrl+A, Ctrl+C/X/V, and Unicode-aware character movement. Ctrl+Z undoes; Ctrl+Y or Alt+Z redoes. Alt+M toggles mouse capture. Eyes Only blocks copy/cut.
+- Inline find/replace with highlighted matches, forward/backward navigation, single-match replacement, and Esc restoring the original search position.
+- Adjustable writing width and optional typewriter scrolling, with saved preferences. Shared wrapping and cached row positions improve long-document typing and align mouse placement with the visible text.
+- Esc clears selection or closes a popup before moving to the tree. Vault writes finish before document replacement, quit, or auto-lock; unsaved disk drafts offer save/discard/cancel. Ctrl+Q quits.
+- Alt+V saves to the vault, Alt+S saves to disk, Alt+I inserts AI output, and Alt+N creates a vault draft. F1 opens command help.
+- Local vLLM/Ollama integration, encrypted SQLite vaults, document import, and filesystem editing.
+- Vault password attempt rate limiting and configurable session auto-lock. Go runtime target 1.25.10 and updated networking/crypto dependencies.
+- Code split by responsibility to stay below the 300-line ceiling, checked by `scripts/check-loc.sh`.
+
+Existing vault notes retain their filenames. The vault gains an additive `auto_named` column to remember unconfirmed draft names; document payload encryption is unchanged.
+
+Validation: Go test suite, TUI/storage race checks, source line ceiling, and installed-app smoke tests passed. Desktop clipboard integration was tested with isolated utilities; the actual desktop clipboard service remains unverified.

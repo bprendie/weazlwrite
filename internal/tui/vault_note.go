@@ -10,7 +10,7 @@ import (
 )
 
 func (m *model) newVaultNote() {
-	name := "untitled-" + uuid.NewString()[:8] + ".md"
+	name := "untitled.md"
 	path := m.newVaultNotePath(name)
 	m.vaultID = uuid.NewString()
 	m.filePath = path
@@ -20,6 +20,7 @@ func (m *model) newVaultNote() {
 	m.eyesOnly = false
 	m.expandTreeTo("vault:" + path)
 	m.loadEditorText("# Untitled\n")
+	m.autoNamed = true
 	m.dirty = true
 	m.status = "new vault note " + path
 	m.setView(viewEdit)

@@ -1,5 +1,7 @@
 # WeazlWrite
 
+**[v0.1.0](https://github.com/bprendie/weazlwrite/releases/tag/v0.1.0)** — The vault saves quietly, your drafts get sensible names, and the cursor minds its own damn business. See the [changelog](CHANGELOG.md).
+
 ![WeazlWrite screenshot](weazlwrite.png)
 
 A sovereign text editor for a paranoid age. WeazlWrite is a private, local-first Markdown writing TUI for vLLM and Ollama servers. Think of it as a quiet terminal desk for drafts, docs, notes, and little technical spells, backed by an encrypted vault tucked under the floorboards.
@@ -101,7 +103,7 @@ $env:WEAZLWRITE_DATA = "C:\path\to\data"
 - `r`: rename or move the selected tree item by typing its new path
 - `o`: toggle Eyes Only on a vault note
 - `i`: import the selected filesystem file or folder into the encrypted vault
-- `ctrl+s`: save now to the current target; vault drafts also save as you type
+- `ctrl+s`: save now; first save of an automatically named vault draft asks you to confirm its filename
 - `alt+v`: save to the encrypted vault
 - `alt+s`: save to a filesystem path
 - `ctrl+f`: find text; in the editor, keep writing visible and use Tab for replacement
@@ -141,6 +143,8 @@ Big directories are fine. Move with `j` / `k`, the arrow keys, `pgup` / `pgdown`
 Tree chores happen right where your cursor is. Press `n` to create a new document in the selected folder, then type the path before it is created. Press `ctrl+n` for a new folder, `d` to delete a selected file or empty folder, and `r` to rename or move. Press `space` to pick up a file, navigate, and press `space` again to drop it. Folders fold and unfold with `enter`. While you are already writing, `alt+n` drops a new untitled vault note without making you wander back to the tree.
 
 Press `alt+v` to save the current buffer into the encrypted vault. Press `alt+s` to save it out to the regular filesystem. Press `ctrl+s` when you want an immediate save back to wherever the current note already lives.
+
+New vault drafts borrow up to six words from your opening text for their filename, skipping Markdown decoration, front matter, and code blocks. `# **Project** [roadmap](https://example.com)` becomes `project-roadmap.md`, not a URL-shaped crime scene. Names stay in the current folder, and duplicates get a number. The suggestion follows the opening words until you confirm it: your first Ctrl+S offers the filename to accept or edit. Esc leaves the draft safely autosaved and asks again next time. This survives reopening; once you name it, it stays named. Existing named notes keep their names.
 
 Vault drafts now save while you write: after roughly three-quarters of a second of quiet, or about every five seconds if the words refuse to stop coming. Background saves keep their mouths shut—no blinking save labels or dancing asterisks while you write. Ctrl+S still works. Press it, feel responsible, enjoy your tiny hit of administrative dopamine—it flushes the latest draft immediately and confirms when it’s saved.
 

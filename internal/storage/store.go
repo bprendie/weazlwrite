@@ -24,6 +24,7 @@ type Note struct {
 	Path      string
 	Title     string
 	EyesOnly  bool
+	AutoNamed bool
 	UpdatedAt time.Time
 }
 

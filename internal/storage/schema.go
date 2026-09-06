@@ -31,6 +31,9 @@ func (s *Store) Migrate() error {
 	if err := s.ensureNoteColumns(); err != nil {
 		return err
 	}
+	if err := s.ensureDraftNameColumn(); err != nil {
+		return err
+	}
 	return s.ensureFolderColumns()
 }
 

@@ -75,7 +75,7 @@ func (s *Store) RenameNote(oldPath, newPath string) error {
 	if err := s.ensureFolderParents(newPath); err != nil {
 		return err
 	}
-	result, err := s.db.Exec(`update notes set path = ?, updated_at = current_timestamp where path = ?`, newPath, oldPath)
+	result, err := s.db.Exec(`update notes set path = ?, auto_named = 0, updated_at = current_timestamp where path = ?`, newPath, oldPath)
 	if err != nil {
 		return err
 	}
@@ -93,11 +93,11 @@ func (s *Store) LoadNote(path string) (Note, string, bool, error) {
 	if !s.unlocked {
 		return Note{}, "", false, errors.New("vault is locked")
 	}
-	row := s.db.QueryRow(`select id, path, title, eyes_only, nonce, ciphertext, updated_at from notes where path = ?`, path)
+	row := s.db.QueryRow(`select id, path, title, eyes_only, auto_named, nonce, ciphertext, updated_at from notes where path = ?`, path)
 	var note Note
 	var nonce, ciphertext []byte
 	var eyesOnly any
-	if err := row.Scan(&note.ID, &note.Path, &note.Title, &eyesOnly, &nonce, &ciphertext, &note.UpdatedAt); err != nil {
+	if err := row.Scan(&note.ID, &note.Path, &note.Title, &eyesOnly, &note.AutoNamed, &nonce, &ciphertext, &note.UpdatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return Note{}, "", false, nil
 		}
@@ -112,7 +112,7 @@ func (s *Store) LoadNote(path string) (Note, string, bool, error) {
 }
 
 func (s *Store) ListNotes() ([]Note, error) {
-	rows, err := s.db.Query(`select id, path, title, eyes_only, updated_at from notes order by path collate nocase`)
+	rows, err := s.db.Query(`select id, path, title, eyes_only, auto_named, updated_at from notes order by path collate nocase`)
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +121,7 @@ func (s *Store) ListNotes() ([]Note, error) {
 	for rows.Next() {
 		var note Note
 		var eyesOnly any
-		if err := rows.Scan(&note.ID, &note.Path, &note.Title, &eyesOnly, &note.UpdatedAt); err != nil {
+		if err := rows.Scan(&note.ID, &note.Path, &note.Title, &eyesOnly, &note.AutoNamed, &note.UpdatedAt); err != nil {
 			return nil, err
 		}
 		note.EyesOnly = scanBool(eyesOnly)

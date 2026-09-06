@@ -85,6 +85,7 @@ func (m *model) openVaultPath(path string) error {
 	}
 	m.expandTreeTo("vault:" + note.Path)
 	m.loadEditorText(content)
+	m.autoNamed = note.AutoNamed
 	m.dirty = false
 	m.status = "editing vault:" + note.Path
 	if m.eyesOnly {
@@ -138,6 +139,7 @@ func (m *model) saveToVaultPath(path string) error {
 	m.isVault = true
 	m.eyesOnly = m.eyesOnlyPaths[cleanVaultPath(path)]
 	m.expandTreeTo("vault:" + path)
+	m.autoNamed = false
 	m.status = "saved vault:" + path
 	m.dirty = false
 	m.err = ""
@@ -158,6 +160,7 @@ func (m *model) saveToDiskPath(path string) error {
 	m.filePath = abs
 	m.diskPath = abs
 	m.isVault = false
+	m.autoNamed = false
 	m.cwd = filepath.Dir(abs)
 	m.expandTreeTo("file:" + abs)
 	m.status = "saved " + abs
@@ -173,12 +176,5 @@ func defaultVaultPath(diskPath, cwd, content string) string {
 		}
 		return cleanVaultPath(filepath.Base(diskPath))
 	}
-	title := strings.ToLower(strings.ReplaceAll(titleFor("", content), " ", "-"))
-	if title == "" {
-		title = "untitled"
-	}
-	if filepath.Ext(title) == "" {
-		title += ".md"
-	}
-	return cleanVaultPath(title)
+	return suggestedVaultName(content)
 }

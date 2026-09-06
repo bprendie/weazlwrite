@@ -121,6 +121,7 @@ type model struct {
 	diskPath       string
 	vaultPath      string
 	vaultID        string
+	autoNamed      bool
 	isVault        bool
 	eyesOnly       bool
 	selectionMode  bool

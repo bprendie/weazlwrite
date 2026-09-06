@@ -86,3 +86,38 @@ func (m model) updateUnsavedDisk(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	m.err = ""
 	return m.updateAndSchedule(pending.key)
 }
+
+// Drain vault writes before actions that can change a note, its path, or session.
+func (m model) vaultTransition(key tea.KeyMsg) bool {
+	if key.Paste {
+		return false
+	}
+	k := key.String()
+	if (k == "ctrl+c" && !m.editorTyping()) || k == "ctrl+q" {
+		return true
+	}
+	if m.mode == modeWrite {
+		switch k {
+		case keyNewNote, keySaveVault, keySaveDisk, keyEyes:
+			return true
+		case keyEsc:
+			return m.editorTyping() && !m.hasTextSelection()
+		case keyToggleTree:
+			return m.editorTyping()
+		}
+		if m.focus == focusTree {
+			switch k {
+			case "enter", "n", "d", "r", "i", "o", " ", keyNewFolder:
+				return true
+			}
+		}
+	}
+	// Saving into a different destination and tree mutations must not race autosave.
+	switch m.mode {
+	case modeSaveFile, modeSaveVault, modeNewDocument, modeRenameTree, modeNewFolder:
+		return k == "enter"
+	case modeConfirmDelete, modeConfirmEyesOff:
+		return k == "enter" || k == "y" || k == "Y"
+	}
+	return false
+}

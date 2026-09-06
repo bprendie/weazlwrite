@@ -29,6 +29,7 @@ func (m *model) resetEditorHistory() {
 }
 
 func (m *model) loadEditorText(s string) {
+	m.autoNamed = false
 	m.clearTextSelection()
 	m.search = editorSearchState{}
 	m.editorEpoch++
