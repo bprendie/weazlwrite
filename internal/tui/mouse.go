@@ -1,13 +1,10 @@
 package tui
 
 import (
-	"reflect"
 	"strings"
-	"unicode"
 
-	"github.com/charmbracelet/bubbles/textarea"
+	textarea "github.com/bprendie/weazlwrite/internal/editorbuffer"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 func (m model) updateMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
@@ -38,9 +35,12 @@ func (m model) handleWheel(mouse tea.MouseEvent) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	if target == focusEditor && m.view == viewEdit {
-		var cmd tea.Cmd
-		m.editor, cmd = m.editor.Update(tea.MouseMsg(mouse))
-		return m, cmd
+		delta := 3
+		if mouse.Type == tea.MouseWheelUp {
+			delta = -3
+		}
+		m.editor.ScrollRows(delta)
+		return m, nil
 	}
 	if target == focusPreview {
 		switch mouse.Type {
@@ -79,7 +79,7 @@ func (m model) handleMouseMotion(mouse tea.MouseEvent) (tea.Model, tea.Cmd) {
 	if !m.editorDrag || m.view != viewEdit {
 		return m, nil
 	}
-	if pos, ok := m.editorPosAt(mouse.X, mouse.Y); ok {
+	if pos, ok := m.editorDragPos(mouse.X, mouse.Y); ok {
 		m.dragEnd = pos
 		m.placeEditorCursor(pos)
 	}
@@ -98,18 +98,8 @@ func (m model) handleMouseRelease(mouse tea.MouseEvent) (tea.Model, tea.Cmd) {
 	if m.dragStart.eq(m.dragEnd) {
 		return m, nil
 	}
-	if m.eyesOnly {
-		m.status = "eyes only notes cannot be copied"
-		m.err = "eyes only notes keep copy protection on"
-		return m, nil
-	}
-	text := m.textBetween(m.dragStart, m.dragEnd)
-	if strings.TrimSpace(text) == "" {
-		m.status = "selection empty"
-		return m, nil
-	}
-	m.status = "copied selection"
-	return m, copyOSC52(text)
+	m.status = "text selected; type to replace, Ctrl+C copies"
+	return m, nil
 }
 
 func (m model) focusAtXY(x, y int) focus {
@@ -151,19 +141,13 @@ func (m model) editorPosAt(x, y int) (textPos, bool) {
 }
 
 func (m model) visualToPos(vis, colX int) textPos {
-	value := m.editor.Value()
-	width := m.editorWrapWidth()
-	line, rowOff := logicalAtVisualRow(value, vis, width)
-	lines := strings.Split(value, "\n")
-	if line < 0 || line >= len(lines) {
-		return textPos{}
-	}
-	return textPos{line: line, col: runeIndexAtVisual(lines[line], rowOff, colX, width)}
+	p := m.editor.PositionAt(vis, colX)
+	return textPos{line: p.Line, col: p.Column}
 }
 
 func (m *model) placeEditorCursor(pos textPos) {
-	m.moveEditorToLine(pos.line)
-	m.editor.SetCursor(pos.col)
+	m.undoOpen = false
+	m.editor.SetPosition(textarea.Position{Line: pos.line, Column: pos.col})
 	if m.editor.Focused() {
 		m.editor, _ = m.editor.Update(nil)
 	}
@@ -200,57 +184,7 @@ func (m model) textBetween(a, b textPos) string {
 	return bld.String()
 }
 
-func textareaYOffset(ed textarea.Model) int {
-	vp := reflect.ValueOf(ed).FieldByName("viewport")
-	if !vp.IsValid() || vp.Kind() != reflect.Pointer || vp.IsNil() {
-		return 0
-	}
-	y := vp.Elem().FieldByName("YOffset")
-	if !y.IsValid() || !y.CanInt() {
-		return 0
-	}
-	return int(y.Int())
-}
-
-func (m model) editorDragView(width, height int) string {
-	value := m.editor.Value()
-	lines := strings.Split(value, "\n")
-	wrapW := m.editorWrapWidth()
-	offset := textareaYOffset(m.editor)
-	start, end := m.dragStart, m.dragEnd
-	if end.less(start) {
-		start, end = end, start
-	}
-	a := posToOffset(lines, start)
-	b := posToOffset(lines, end)
-	var (
-		out    []string
-		vis    int
-		docOff int
-	)
-	for li, line := range lines {
-		runes := []rune(line)
-		rows := wrapRunes(runes, wrapW)
-		idx := 0
-		for ri, row := range rows {
-			trimmed := []rune(strings.TrimRight(string(row), " "))
-			if vis >= offset && len(out) < height {
-				gutter := styleGutter(formatGutter(li+1, editorGutterWidth))
-				if ri > 0 {
-					gutter = strings.Repeat(" ", editorGutterWidth)
-				}
-				out = append(out, gutter+paintRunes(trimmed, docOff+idx, a, b))
-			}
-			idx += len(trimmed)
-			if idx < len(runes) && unicode.IsSpace(runes[idx]) {
-				idx++
-			}
-			vis++
-		}
-		docOff += len(runes) + 1
-	}
-	return strings.Join(out, "\n")
-}
+func textareaYOffset(ed textarea.Model) int { return ed.YOffset() }
 
 func posToOffset(lines []string, pos textPos) int {
 	n := 0
@@ -261,20 +195,4 @@ func posToOffset(lines []string, pos textPos) int {
 		n += min(max(0, pos.col), len([]rune(lines[pos.line])))
 	}
 	return n
-}
-
-func paintRunes(runes []rune, docOff, a, b int) string {
-	if len(runes) == 0 {
-		return ""
-	}
-	var bld strings.Builder
-	for i, r := range runes {
-		ch := string(r)
-		off := docOff + i
-		if off >= a && off < b {
-			ch = lipgloss.NewStyle().Reverse(true).Render(ch)
-		}
-		bld.WriteString(ch)
-	}
-	return bld.String()
 }

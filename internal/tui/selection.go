@@ -99,6 +99,10 @@ func (m model) mainContentBounds() (x, y, width, height int) {
 	}
 	contentX := mainX + 2
 	contentY := bodyY + 1
+	if m.view == viewEdit {
+		w, pad := m.editorLayout()
+		return contentX + pad, contentY, w, m.editor.Height()
+	}
 	return contentX, contentY, contentWidth(m.styles.activePanel, mainW), contentHeight(m.styles.activePanel, m.bodyHeight())
 }
 

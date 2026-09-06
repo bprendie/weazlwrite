@@ -11,8 +11,15 @@ func (m *model) resize() {
 	_, mainW := m.layoutWidths()
 	m.configureEditor()
 	mainStyle := m.mainPanelStyle()
-	m.editor.SetWidth(contentWidth(mainStyle, mainW))
-	m.editor.SetHeight(contentHeight(mainStyle, innerH))
+	editorWidth, _ := m.editorLayout()
+	m.editor.SetWidth(editorWidth)
+	editorHeight := contentHeight(mainStyle, innerH)
+	if m.mode == modeFind && m.view == viewEdit {
+		editorHeight = max(1, editorHeight-2)
+	}
+	m.editor.SetHeight(editorHeight)
+	m.editor.ScrollMargin = m.cfg.UI.EditorScrollMargin
+	m.editor.Typewriter = m.cfg.UI.EditorTypewriter
 	m.preview.Width = contentWidth(mainStyle, mainW)
 	m.preview.Height = contentHeight(mainStyle, innerH)
 	m.helpView.Width = contentWidth(m.styles.panel, m.width)

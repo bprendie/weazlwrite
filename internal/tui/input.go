@@ -1,8 +1,50 @@
 package tui
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	textarea "github.com/bprendie/weazlwrite/internal/editorbuffer"
+	tea "github.com/charmbracelet/bubbletea"
+	"strings"
+)
 
 func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.editorTyping() && !msg.Paste {
+		if m.extendEditorSelection(msg.String()) {
+			return m, nil
+		}
+		switch msg.String() {
+		case "alt+w":
+			m.cycleWritingWidth()
+			return m, nil
+		case "alt+t":
+			m.toggleTypewriter()
+			return m, nil
+		case "f3", "shift+f3", "f15", "alt+f3":
+			m.repeatEditorFind(msg.String() != "f3")
+			return m, nil
+		case "ctrl+a":
+			m.undoOpen = false
+			m.dragStart = textPos{}
+			lines := strings.Split(m.editorText(), "\n")
+			m.dragEnd = textPos{len(lines) - 1, len([]rune(lines[len(lines)-1]))}
+			m.editor.SetPosition(textarea.Position{Line: m.dragEnd.line, Column: m.dragEnd.col})
+			return m, nil
+		case "ctrl+c":
+			return m.copyEditorSelection(false)
+		case "ctrl+x":
+			return m.copyEditorSelection(true)
+		case "esc":
+			if m.hasTextSelection() {
+				m.clearTextSelection()
+				return m, nil
+			}
+		}
+	}
+	if m.editorTyping() && (msg.Paste || msg.String() == "tab" || msg.String() == "shift+tab" || msg.String() == "ctrl+v") {
+		return m.updateEditorInput(msg)
+	}
+	if editorEditKind(msg) == "" {
+		m.undoOpen = false
+	}
 	switch msg.String() {
 	case keyCycleFocus:
 		m.cycleFocus()
@@ -38,7 +80,7 @@ func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case keyUndo:
 		m.undoEdit()
 		return m, nil
-	case keyRedo:
+	case keyRedo, "ctrl+y", "alt+z":
 		m.redoEdit()
 		return m, nil
 	case keyHelp:
@@ -101,10 +143,12 @@ func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.setView(viewEdit)
 			return m, nil
 		}
-		if m.focus == focusEditor && m.treeVisible {
+		if m.focus == focusEditor {
+			m.treeVisible = true
 			m.setFocus(focusTree)
 			return m, nil
 		}
+		m.carryTarget = treeEntry{}
 		m.setMainFocus()
 		return m, nil
 	}
@@ -120,15 +164,7 @@ func (m model) updateWrite(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.selectionMode {
 			return m, nil
 		}
-		before := m.editorSnapshot()
-		var cmd tea.Cmd
-		m.editor, cmd = m.editor.Update(msg)
-		if m.editorText() != before.text {
-			m.recordEdit(before)
-			m.dirty = true
-			m.renderPreview()
-		}
-		return m, cmd
+		return m.updateEditorInput(msg)
 	}
 	if m.view == viewRender {
 		var cmd tea.Cmd
@@ -151,6 +187,7 @@ func (m *model) cycleFocus() {
 }
 
 func (m *model) setFocus(f focus) {
+	m.undoOpen = false
 	m.focus = f
 	if f == focusEditor {
 		m.editor.Focus()
@@ -169,10 +206,14 @@ func (m *model) setMainFocus() {
 }
 
 func (m *model) setView(v viewMode) {
+	wasEdit := m.view == viewEdit
 	m.view = v
 	m.setMainFocus()
 	if v == viewRender {
 		m.renderPreview()
+		if wasEdit {
+			m.alignPreviewToEditor()
+		}
 	}
 }
 
@@ -205,7 +246,7 @@ func (m model) toggleMouseCapture() (tea.Model, tea.Cmd) {
 		m.status = "app mouse on"
 		return m, tea.Batch(tea.EnableMouseCellMotion, tea.ClearScreen)
 	}
-	m.status = "terminal mouse selection on; ctrl+y restores app mouse"
+	m.status = "terminal mouse selection on; alt+m restores app mouse"
 	return m, tea.Batch(tea.DisableMouse, tea.ClearScreen)
 }
 

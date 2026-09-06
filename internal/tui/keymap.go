@@ -1,8 +1,8 @@
 package tui
 
 import (
+	textarea "github.com/bprendie/weazlwrite/internal/editorbuffer"
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/textarea"
 )
 
 // App chords. Values match tea.KeyMsg.String().
@@ -10,7 +10,7 @@ const (
 	keyCycleFocus = "tab"
 	keySave       = "ctrl+s"
 	keySaveVault  = "alt+v"
-	keySaveDisk   = "alt+d"
+	keySaveDisk   = "alt+s"
 	keyFind       = "ctrl+f"
 	keyJumpPage   = "ctrl+g"
 	keyEyes       = "alt+o"
@@ -18,7 +18,7 @@ const (
 	keyNewNote    = "alt+n"
 	keyNewFolder  = "ctrl+n"
 	keyToggleTree = "ctrl+o"
-	keySelection  = "ctrl+y"
+	keySelection  = "alt+m"
 	keyUndo       = "ctrl+z"
 	keyRedo       = "ctrl+shift+z"
 	keyHelp       = "f1"
@@ -41,9 +41,11 @@ func newEditorKeyMap() textarea.KeyMap {
 		key.WithKeys("right"),
 		key.WithHelp("right", "character forward"),
 	)
+	km.WordBackward = key.NewBinding(key.WithKeys("ctrl+left", "alt+left", "alt+b"))
+	km.WordForward = key.NewBinding(key.WithKeys("ctrl+right", "alt+right", "alt+f"))
 	return km
 }
 
 func (m model) editorTyping() bool {
-	return m.focus == focusEditor && m.view == viewEdit && !m.selectionMode
+	return m.mode == modeWrite && m.focus == focusEditor && m.view == viewEdit && !m.selectionMode
 }

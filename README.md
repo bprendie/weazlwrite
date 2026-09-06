@@ -89,9 +89,9 @@ $env:WEAZLWRITE_DATA = "C:\path\to\data"
 - startup vault picker: `up` / `down` choose, `enter` opens, `n` creates a new vault
 - `ctrl+e`: edit mode from the tree or preview; end of line while writing
 - `ctrl+r`: rendered preview mode
-- `esc`: leave render mode for edit mode, or move from the editor back to the tree
+- `esc`: close the current popup, return from preview to editing, or leave the editor for the tree (revealing it if hidden)
 - `ctrl+o`: show or hide the file tree
-- `tab`: move between the file tree and the main writing surface
+- `tab` / `shift+tab`: indent / outdent while writing; Tab switches panes outside the editor
 - `enter`: open a selected file, or fold/unfold a selected folder
 - `space`: pick up a file or note; move to a folder; press `space` again to drop it
 - `n`: create a new document from the tree
@@ -101,24 +101,30 @@ $env:WEAZLWRITE_DATA = "C:\path\to\data"
 - `r`: rename or move the selected tree item by typing its new path
 - `o`: toggle Eyes Only on a vault note
 - `i`: import the selected filesystem file or folder into the encrypted vault
-- `ctrl+s`: save to the current target
+- `ctrl+s`: save now to the current target; vault drafts also save as you type
 - `alt+v`: save to the encrypted vault
-- `alt+d`: save to a filesystem path
-- `ctrl+f`: find text in the current pane
+- `alt+s`: save to a filesystem path
+- `ctrl+f`: find text; in the editor, keep writing visible and use Tab for replacement
+- `f3` / `shift+f3`: next / previous editor match (`alt+f3` also goes backward)
+- `alt+w`: cycle editor width: 80, 90, 100 columns, or the full pane
+- `alt+t`: toggle typewriter scrolling
 - `ctrl+g`: jump to a page in the current pane
 - `alt+i`: ask the local model to insert a Markdown block
+- `ctrl+a`: select all while writing; Home moves to the start of the line
+- `shift+arrows`: select text; `ctrl+shift+left/right` selects by word
+- `ctrl+c` / `ctrl+x`: copy / cut selected editor text
 - `ctrl+z`: undo
-- `ctrl+shift+z`: redo
-- `ctrl+y`: toggle app mouse capture; off lets the terminal drag-select text
+- `ctrl+y` / `alt+z`: redo (`ctrl+shift+z` also works if your terminal sends it)
+- `alt+m`: toggle app mouse capture; off lets the terminal drag-select text
 - `alt+o`: toggle Eyes Only on the current vault note
 - `f1`: open the full command popup
 - `?` or `h`: open the full help screen when not typing in the editor
 - `pgup` / `pgdown`: page the focused tree, editor, or render pane
 - mouse wheel: scroll the tree or active writing surface
 - click in the editor: place the cursor
-- drag in the editor: copy the selected range
+- drag in the editor: select a range for replacement, copying, or cutting
 - click in the tree: select that row
-- `ctrl+c`: quit
+- `ctrl+q`: quit (`ctrl+c` also quits outside the editor); pending vault saves finish first, and unsaved disk drafts ask what to do
 
 ## Vault And Files
 
@@ -134,13 +140,25 @@ Big directories are fine. Move with `j` / `k`, the arrow keys, `pgup` / `pgdown`
 
 Tree chores happen right where your cursor is. Press `n` to create a new document in the selected folder, then type the path before it is created. Press `ctrl+n` for a new folder, `d` to delete a selected file or empty folder, and `r` to rename or move. Press `space` to pick up a file, navigate, and press `space` again to drop it. Folders fold and unfold with `enter`. While you are already writing, `alt+n` drops a new untitled vault note without making you wander back to the tree.
 
-Press `alt+v` to save the current buffer into the encrypted vault. Press `alt+d` to save it out to the regular filesystem. Press `ctrl+s` when you simply want to save back to wherever the current note already lives.
+Press `alt+v` to save the current buffer into the encrypted vault. Press `alt+s` to save it out to the regular filesystem. Press `ctrl+s` when you want an immediate save back to wherever the current note already lives.
+
+Vault drafts now save while you write: after roughly three-quarters of a second of quiet, or about every five seconds if the words refuse to stop coming. Background saves keep their mouths shut—no blinking save labels or dancing asterisks while you write. Ctrl+S still works. Press it, feel responsible, enjoy your tiny hit of administrative dopamine—it flushes the latest draft immediately and confirms when it’s saved.
+
+The database work runs in the background, and Ctrl+S never claims victory for newer words just because an older write finished. Leaving a vault draft, opening another note, quitting, and auto-lock wait for pending saves. If a write fails, your draft stays put and Ctrl+S retries. Undo survives saving. Disk files still need an explicit save; rolling vault saves do not quietly turn your filesystem into an autosave experiment. This updates the current document, not a stack of historical revisions, and a crash can still lose the words typed since the last completed save.
 
 To pull existing surface files into the encrypted vault, select a `.md`, `.markdown`, `.txt`, `.pdf`, or `.docx` file and press `i`. Select a folder and press `i` to bulk-import it as a vault root, perfect for absorbing Obsidian vaults that already live on disk. Word and PDF files are aggressively stripped down and converted to pure Markdown before encryption. Image-only PDFs and image-only Word files are rejected because there is no text to harvest.
 
-The writing surface is a real buffer, not a form widget wearing a trench coat. Long lines wrap to the pane. The file keeps the newlines you typed; WeazlWrite will not reflow your Markdown on save, and it will not expand tabs just because you opened a note. Home and End jump the paragraph. `pgup` / `pgdown` move by what is on screen. `ctrl+z` undoes a burst of typing; `ctrl+shift+z` puts it back. `ctrl+v` pastes at the cursor. `ctrl+f` finds from where you are, including a second hit on the same line, and it will loop the document if it has to.
+The writing surface is a real buffer, not a form widget wearing a trench coat. Long lines wrap to the pane. The file keeps the newlines you typed; WeazlWrite will not reflow your Markdown on save, and it will not expand tabs just because you opened a note. Home and End jump the paragraph. `pgup` / `pgdown` move by what is on screen. `ctrl+z` undoes a burst of typing; `ctrl+y` or `alt+z` puts it back. `ctrl+v` pastes at the cursor. `ctrl+f` finds from where you are, including a second hit on the same line, and it will loop the document if it has to. In the editor, the search bar stays under the document: Enter/F3 advances, Shift+F3 (or Alt+F3) goes back, and Tab switches to a replacement field. Enter there replaces one match and moves on. F2 returns to writing with the match selected; Esc closes search and restores your starting position. No vanishing manuscript just because you wanted to hunt down your seventeenth “actually.”
 
-Drag in the writing pane to copy a character range; click without dragging only moves the cursor. Mouse scrolling and terminal drag-selection still fight over the same events, so press `ctrl+y` when you want the terminal to own the mouse, then press `ctrl+y` again when you want WeazlWrite's click, drag, and wheel back.
+Esc is your way out of the writing pane: it closes a search or command popup first; then clears any text selection; otherwise it puts you back in the tree, even if you hid the thing. Enter opens the selected note, and Ctrl+E puts you back in your current draft. No secret Vim handshake. Once the editor has focus, typing writes words.
+
+Vault departures flush pending changes before moving on. For an unsaved disk draft, opening another document or quitting offers **S** to save and continue, **D** to discard, or **Esc** to stay put. A failed save keeps the draft alive. Just visiting the tree with Esc does not save or discard a disk file. If a vault write is still running when you ask to leave, Esc cancels the departure while the save keeps working.
+
+Tab now does the job its little plastic keycap promised: insert four spaces, or nest the current list item. Shift+Tab removes up to four leading spaces or one existing tab from the current line. Existing tabs stay tabs on disk. Alt+D deletes the next word; filesystem Save As lives on Alt+S. Move the cursor before making a different edit and undo remembers the boundary. Paste gets its own undo step, because dropping a paragraph should not drag your last sentence into the shredder with it. Enter continues bullets, numbered lists, checkboxes, and blockquotes. Empty items step back out; Backspace at the start of the text removes a nesting level or the marker. Finished a checkbox? The next one starts unchecked, because optimism is not a task tracker. Fenced code keeps its indentation and stays free of list meddling; pasted Markdown arrives as you sent it. The hidden Markdown preview also waits until you ask to see it, instead of making every keystroke pay the rendering tax.
+
+The writing column defaults to 90 characters, centered inside the existing pane. Alt+W cycles 80, 90, 100, and full width; Alt+T toggles typewriter scrolling. Ordinary scrolling leaves a few rows of breathing room below the cursor. Those preferences survive a restart. In `config.json`, `ui.editor_width` sets the column (`0` uses the full pane), `ui.editor_scroll_margin` sets the breathing room (default `3`), and `ui.editor_typewriter` keeps the cursor near the middle. These are visual choices, not permission to rearrange your newlines. The editor also paints the visible rows instead of repainting the entire novel every time you sneeze on the keyboard.
+
+Drag in the writing pane to select a character range; release keeps it selected. Type or paste to replace it, Backspace/Delete to remove it, Ctrl+C to copy, or Ctrl+X to cut. Shift+arrows select without the mouse; Ctrl+Shift+left/right grabs words, and Ctrl+A grabs the lot. Esc clears the selection first. Clipboard failure leaves a cut intact, because losing words is a rotten way to discover your clipboard is on strike. Click without dragging only moves the cursor. Mouse scrolling and terminal drag-selection still fight over the same events, so press `alt+m` when you want the terminal to own the mouse, then press `alt+m` again when you want WeazlWrite's click, drag, and wheel back.
 
 ## Eyes Only Mode
 
@@ -148,7 +166,7 @@ Some notes belong in the vault, not lingering in your system clipboard. Eyes Onl
 
 Hit `o` from the tree, or `alt+o` while the vault note is open. Eyes Only files glow high-alert orange in the tree, so you know exactly what you're dealing with before you hit enter.
 
-When an Eyes Only note is live, WeazlWrite keeps app mouse capture on, ignores `ctrl+y`, and refuses to copy on drag-release. You can read the file, grind out edits, and save it back to the encrypted vault. You cannot casually harvest the buffer into a clipboard.
+When an Eyes Only note is live, WeazlWrite keeps app mouse capture on, ignores `alt+m`, and blocks copying and cutting. Selection and replacement inside the editor still work. You can read the file, grind out edits, and save it back to the encrypted vault. You cannot casually harvest the buffer into a clipboard.
 
 Dropping the shield requires actual intent. Press `o` or `alt+o` and explicitly confirm the warning prompt before the note returns to standard behavior.
 

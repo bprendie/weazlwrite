@@ -37,8 +37,11 @@ type Vault struct {
 }
 
 type UI struct {
-	RenderMarkdown *bool  `json:"render_markdown,omitempty"`
-	MarkdownStyle  string `json:"markdown_style,omitempty"`
+	EditorWidth        int    `json:"editor_width"`
+	EditorScrollMargin int    `json:"editor_scroll_margin"`
+	EditorTypewriter   bool   `json:"editor_typewriter"`
+	RenderMarkdown     *bool  `json:"render_markdown,omitempty"`
+	MarkdownStyle      string `json:"markdown_style,omitempty"`
 }
 
 func Load() (Config, string, error) {
@@ -115,8 +118,10 @@ func Default() Config {
 			AutoLockMinutes: intPtr(15),
 		},
 		UI: UI{
-			RenderMarkdown: boolPtr(true),
-			MarkdownStyle:  "dark",
+			EditorWidth:        90,
+			EditorScrollMargin: 3,
+			RenderMarkdown:     boolPtr(true),
+			MarkdownStyle:      "dark",
 		},
 	}
 }

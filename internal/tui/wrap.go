@@ -1,76 +1,14 @@
 package tui
 
 import (
+	textarea "github.com/bprendie/weazlwrite/internal/editorbuffer"
 	"strings"
-	"unicode"
 
-	rw "github.com/mattn/go-runewidth"
 	"github.com/rivo/uniseg"
 )
 
-// wrapRunes word-wraps a logical line the way bubbles textarea does, including
-// the trailing space it keeps on each soft-wrapped row.
-func wrapRunes(runes []rune, width int) [][]rune {
-	if width < 1 {
-		width = 1
-	}
-	var (
-		lines  = [][]rune{{}}
-		word   = []rune{}
-		row    int
-		spaces int
-	)
-	for _, r := range runes {
-		if unicode.IsSpace(r) {
-			spaces++
-		} else {
-			word = append(word, r)
-		}
-		if spaces > 0 {
-			if uniseg.StringWidth(string(lines[row]))+uniseg.StringWidth(string(word))+spaces > width {
-				row++
-				lines = append(lines, []rune{})
-				lines[row] = append(lines[row], word...)
-				lines[row] = append(lines[row], repeatRunes(' ', spaces)...)
-				spaces = 0
-				word = nil
-			} else {
-				lines[row] = append(lines[row], word...)
-				lines[row] = append(lines[row], repeatRunes(' ', spaces)...)
-				spaces = 0
-				word = nil
-			}
-			continue
-		}
-		lastCharLen := rw.RuneWidth(word[len(word)-1])
-		if uniseg.StringWidth(string(word))+lastCharLen > width {
-			if len(lines[row]) > 0 {
-				row++
-				lines = append(lines, []rune{})
-			}
-			lines[row] = append(lines[row], word...)
-			word = nil
-		}
-	}
-	if uniseg.StringWidth(string(lines[row]))+uniseg.StringWidth(string(word))+spaces >= width {
-		lines = append(lines, []rune{})
-		lines[row+1] = append(lines[row+1], word...)
-		spaces++
-		lines[row+1] = append(lines[row+1], repeatRunes(' ', spaces)...)
-	} else {
-		lines[row] = append(lines[row], word...)
-		spaces++
-		lines[row] = append(lines[row], repeatRunes(' ', spaces)...)
-	}
-	return lines
-}
-
-func repeatRunes(r rune, n int) []rune {
-	if n <= 0 {
-		return nil
-	}
-	return []rune(strings.Repeat(string(r), n))
-}
+// Editor layout and hit testing share the buffer's grapheme-aware wrap.
+func wrapRunes(runes []rune, width int) [][]rune { return textarea.WrapRunes(runes, width) }
 
 func visualRowCount(value string, width int) int {
 	n := 0
@@ -120,23 +58,16 @@ func runeIndexAtVisual(line string, rowOff, colX, width int) int {
 	rowOff = min(max(0, rowOff), len(rows)-1)
 	idx := 0
 	for r := 0; r < rowOff; r++ {
-		n := len([]rune(strings.TrimRight(string(rows[r]), " ")))
-		idx += n
-		if idx < len(runes) && unicode.IsSpace(runes[idx]) {
-			idx++
-		}
+		idx += len(rows[r])
 	}
 	x := 0
-	for _, r := range []rune(strings.TrimRight(string(rows[rowOff]), " ")) {
-		w := rw.RuneWidth(r)
-		if x >= colX {
+	g := uniseg.NewGraphemes(string(rows[rowOff]))
+	for g.Next() {
+		if x+g.Width() > colX {
 			break
 		}
-		if x+w > colX && x > 0 {
-			break
-		}
-		x += w
-		idx++
+		x += g.Width()
+		idx += len([]rune(g.Str()))
 	}
-	return min(max(0, idx), len(runes))
+	return min(idx, len(runes))
 }

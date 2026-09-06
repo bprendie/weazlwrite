@@ -8,6 +8,9 @@ import (
 )
 
 func (m model) statusView(width int) string {
+	if m.saves.err != "" {
+		return m.styles.error.Inline(true).MaxWidth(width).Render(minString("! "+m.saves.err, max(1, width)))
+	}
 	if m.err != "" {
 		text := "! " + strings.ReplaceAll(m.err, "\n", " ")
 		return m.styles.error.Inline(true).MaxWidth(width).Render(minString(text, max(1, width)))
@@ -20,7 +23,7 @@ func (m model) statusView(width int) string {
 	if m.eyesOnly {
 		parts = append(parts, m.styles.statusDirty.Render("EYES"))
 	}
-	if m.dirty {
+	if m.dirty && (!m.isVault || m.vaultPath == "") {
 		parts = append(parts, m.styles.statusDirty.Render("*"))
 	}
 	target := m.targetLabel()
@@ -69,6 +72,8 @@ func (m model) viewName() string {
 
 func (m model) modeName() string {
 	switch m.mode {
+	case modeConfirmUnsaved:
+		return "unsaved"
 	case modeVaultPicker:
 		return "vaults"
 	case modeVaultName:
@@ -127,6 +132,12 @@ func (m model) targetLabel() string {
 }
 
 func (m model) helpText() string {
+	if m.saves.pending != nil {
+		return "saving before leaving | esc cancels the transition"
+	}
+	if m.mode == modeConfirmUnsaved {
+		return "s save and continue | d discard | esc cancel"
+	}
 	if m.mode == modeVaultPicker {
 		return "up/down select | enter open | n new vault | ctrl+c quit"
 	}
@@ -146,7 +157,7 @@ func (m model) helpText() string {
 		return "waiting for local model | ctrl+c quit"
 	}
 	if m.mode == modeWrite && m.selectionMode {
-		return "selection mode | drag in writing pane to copy | esc/^Y cancel | ctrl+c quit"
+		return "selection mode | drag in writing pane to copy | esc/alt+m cancel | ctrl+c quit"
 	}
 	if m.mode == modeSaveFile {
 		return "enter save | esc cancel | ctrl+c quit"
@@ -171,6 +182,9 @@ func (m model) helpText() string {
 	}
 	if m.mode == modeHelp {
 		return "up/down scroll | pgup/pgdown | esc close | ctrl+c quit"
+	}
+	if m.mode == modeFind && m.view == viewEdit {
+		return "enter next/replace | tab find/replace | f3 next | shift+f3 previous | f2 edit | esc close | ^Q quit"
 	}
 	if m.mode == modeFind {
 		return "enter find next | esc cancel | ctrl+c quit"
@@ -210,5 +224,19 @@ func (m model) helpText() string {
 	if m.eyesOnly {
 		eyes = " eyes-only"
 	}
+	if m.editorTyping() && m.hasTextSelection() {
+		return "type replace | ^C copy | ^X cut | tab indent | esc clear | ^Q quit"
+	}
+	if m.editorTyping() {
+		return "tab indent | shift+tab outdent | esc tree | ^S save | ^Z undo | ^Y redo | ^F find | f1 commands"
+	}
 	return mode + eyes + " " + tree + " " + mouse + " | " + keyCycleFocus + " focus | enter open | ^S " + target + " | " + keyAI + " AI | " + keyLLM + " llm | " + keyEyes + " eyes | " + keyHelp + " commands | ctrl+c"
+}
+
+// Only an explicit save asks for acknowledgement; rolling writes stay quiet.
+func (m *model) confirmVaultSave(path string) {
+	if m.saves.confirm {
+		m.status = "saved vault:" + path
+		m.saves.confirm = false
+	}
 }

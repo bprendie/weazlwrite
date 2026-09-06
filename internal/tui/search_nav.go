@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	textarea "github.com/bprendie/weazlwrite/internal/editorbuffer"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -11,6 +12,9 @@ import (
 )
 
 func (m model) startFind() (tea.Model, tea.Cmd) {
+	if m.view == viewEdit {
+		return m.startEditorSearch()
+	}
 	m.mode = modeFind
 	m.findPrompt.SetValue(m.lastFind)
 	m.findPrompt.Focus()
@@ -20,6 +24,9 @@ func (m model) startFind() (tea.Model, tea.Cmd) {
 }
 
 func (m model) updateFind(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.view == viewEdit {
+		return m.updateEditorSearch(msg)
+	}
 	switch msg.String() {
 	case "enter":
 		query := strings.TrimSpace(m.findPrompt.Value())
@@ -112,8 +119,7 @@ func (m *model) findInEditor(query string) {
 }
 
 func (m model) editorCursorCol() int {
-	info := m.editor.LineInfo()
-	return max(0, info.StartColumn+info.ColumnOffset)
+	return m.editor.CursorPosition().Column
 }
 
 func findStatus(query string, page int, wrapped bool) string {
@@ -197,32 +203,20 @@ func (m model) editorWrapWidth() int {
 }
 
 func (m model) editorVisualRowCount() int {
-	return visualRowCount(m.editor.Value(), m.editorWrapWidth())
+	return m.editor.VisualRows()
 }
 
 func (m model) editorVisualRow() int {
-	return cursorVisualRow(m.editor.Value(), m.editor.Line(), m.editor.LineInfo().RowOffset, m.editorWrapWidth())
+	return m.editor.VisualRow()
 }
 
 func (m *model) moveEditorToLine(line int) {
-	line = min(max(0, line), max(0, m.editor.LineCount()-1))
-	for m.editor.Line() < line {
-		m.editor.CursorDown()
-	}
-	for m.editor.Line() > line {
-		m.editor.CursorUp()
-	}
-	m.editor.SetCursor(0)
+	m.editor.SetPosition(textarea.Position{Line: line})
 }
 
 func (m *model) moveEditorToVisualRow(target int) {
-	total := m.editorVisualRowCount()
-	target = min(max(0, target), max(0, total-1))
-	line, offset := logicalAtVisualRow(m.editor.Value(), target, m.editorWrapWidth())
-	m.moveEditorToLine(line)
-	for i := 0; i < offset; i++ {
-		m.editor.CursorDown()
-	}
+	target = min(max(0, target), max(0, m.editor.VisualRows()-1))
+	m.editor.SetPosition(m.editor.PositionAt(target, 0))
 }
 
 func (m *model) editorPageUp() {

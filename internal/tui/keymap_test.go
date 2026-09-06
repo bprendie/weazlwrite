@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/bubbles/textarea"
+	textarea "github.com/bprendie/weazlwrite/internal/editorbuffer"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -55,7 +55,7 @@ func TestAltVStartsSaveVault(t *testing.T) {
 	}
 }
 
-func TestAltDStartsSaveFile(t *testing.T) {
+func TestAltSStartsSaveFile(t *testing.T) {
 	m := model{
 		styles:      newStyles(),
 		mode:        modeWrite,
@@ -66,7 +66,7 @@ func TestAltDStartsSaveFile(t *testing.T) {
 		treeVisible: true,
 		cwd:         t.TempDir(),
 	}
-	updated, _ := m.updateWrite(altKey('d'))
+	updated, _ := m.updateWrite(altKey('s'))
 	got := updated.(model)
 	if got.mode != modeSaveFile {
 		t.Fatalf("alt+d mode = %v, want modeSaveFile", got.mode)

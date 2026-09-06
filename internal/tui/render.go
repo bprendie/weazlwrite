@@ -13,7 +13,9 @@ func (m model) View() string {
 	status := m.statusView(screenW)
 
 	var body string
-	if m.mode == modeVaultPicker {
+	if m.mode == modeConfirmUnsaved {
+		body = m.modalView("Unsaved draft", m.targetLabel(), "s saves and continues · d discards · esc cancels", warningOrange, 80)
+	} else if m.mode == modeVaultPicker {
 		body = renderPanel(m.styles.panel, screenW, m.bodyHeight(), m.vaultPickerView())
 	} else if m.mode == modeVaultName {
 		body = m.vaultNameView()
@@ -42,7 +44,11 @@ func (m model) View() string {
 	} else if m.mode == modeHelp {
 		body = m.helpScreenView()
 	} else if m.mode == modeFind {
-		body = m.findView()
+		if m.view == viewEdit {
+			body = m.writeView()
+		} else {
+			body = m.findView()
+		}
 	} else if m.mode == modeJumpPage {
 		body = m.jumpPageView()
 	} else if m.mode == modeImporting {
@@ -99,13 +105,15 @@ func (m model) writeView() string {
 	}
 
 	m.prepareEditorView()
-	mainContent := m.editor.View()
+	_, pad := m.editorLayout()
+	mainContent := lipgloss.NewStyle().PaddingLeft(pad).Render(m.editor.View())
+	if m.mode == modeFind && m.view == viewEdit {
+		mainContent += "\n" + m.editorSearchView(contentWidth(m.mainPanelStyle(), mainW))
+	}
 	if m.view == viewRender {
 		mainContent = m.preview.View()
 	}
-	if m.editorDrag && !m.dragStart.eq(m.dragEnd) && m.view == viewEdit {
-		mainContent = m.editorDragView(contentWidth(m.styles.activePanel, mainW), contentHeight(m.styles.activePanel, innerH))
-	}
+
 	if m.selectionMode {
 		mainContent = m.selectionView(contentWidth(m.styles.activePanel, mainW), contentHeight(m.styles.activePanel, innerH))
 	}

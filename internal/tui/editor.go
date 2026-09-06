@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textarea"
+	textarea "github.com/bprendie/weazlwrite/internal/editorbuffer"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -101,11 +101,19 @@ func (m *model) configureEditor() {
 	m.editor.SetPromptFunc(m.editorChrome.gutter, m.editorChrome.prompt)
 }
 
-func (m model) prepareEditorView() {
+func (m *model) prepareEditorView() {
+	m.applyEditorHighlights()
 	if m.editorChrome == nil {
 		return
 	}
-	m.editorChrome.refresh(m.editor.Value(), max(1, m.editor.Width()))
+	starts, total := m.editor.RowStarts()
+	m.editorChrome.prompts = make([]string, total)
+	for i := range m.editorChrome.prompts {
+		m.editorChrome.prompts[i] = strings.Repeat(" ", m.editorChrome.gutter)
+	}
+	for i, row := range starts {
+		m.editorChrome.prompts[row] = formatGutter(i+1, m.editorChrome.gutter)
+	}
 }
 
 func (m model) editorText() string {

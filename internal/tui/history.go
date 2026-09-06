@@ -29,6 +29,10 @@ func (m *model) resetEditorHistory() {
 }
 
 func (m *model) loadEditorText(s string) {
+	m.clearTextSelection()
+	m.search = editorSearchState{}
+	m.editorEpoch++
+	m.saves = vaultSaveState{version: m.saves.version, timer: m.saves.timer + 1}
 	m.setEditorText(s)
 	m.resetEditorHistory()
 }
@@ -50,13 +54,16 @@ func (m *model) recordEdit(before editorSnapshot) {
 }
 
 func (m *model) restoreSnapshot(snap editorSnapshot) {
+	m.clearTextSelection()
 	m.setEditorText(snap.text)
 	m.moveEditorToLine(snap.line)
 	m.editor.SetCursor(snap.col)
 	if m.editor.Focused() {
 		m.editor, _ = m.editor.Update(nil)
 	}
-	m.renderPreview()
+	if m.view == viewRender {
+		m.renderPreview()
+	}
 }
 
 func (m *model) undoEdit() {

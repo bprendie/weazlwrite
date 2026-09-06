@@ -23,6 +23,9 @@
   },
   "ui": {
     "render_markdown": true,
-    "markdown_style": "dark"
+    "markdown_style": "dark",
+    "editor_width": 90,
+    "editor_scroll_margin": 3,
+    "editor_typewriter": false
   }
 }

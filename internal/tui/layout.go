@@ -38,8 +38,8 @@ func focusedTreeWidth(innerW int) int {
 
 func renderPanel(style lipgloss.Style, outerW, outerH int, content string) string {
 	return style.
-		Width(contentWidth(style, outerW)).
-		Height(contentHeight(style, outerH)).
+		Width(max(1, outerW-style.GetHorizontalBorderSize())).
+		Height(max(1, outerH-style.GetVerticalBorderSize())).
 		MaxWidth(outerW).
 		MaxHeight(outerH).
 		Render(content)
